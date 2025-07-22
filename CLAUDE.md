@@ -4,17 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-modul8r is a personal-use web service that converts scanned tabletop RPG adventure module PDFs into Markdown format using OpenAI's vision models. The service uses a vision-centric approach, analyzing each PDF page as an image to generate structured text.
+modul8r is a personal-use web service that converts scanned tabletop RPG adventure module PDFs into Markdown format using OpenAI's vision models. The application features modern async architecture with concurrent processing, real-time logging, and robust error handling.
+
+## Current Status: **Production Ready**
+
+- ✅ **Core functionality complete** - PDF to Markdown conversion working
+- ✅ **Modern async architecture** - Python 3.13 TaskGroup concurrency (1-100 concurrent requests)
+- ✅ **Real-time monitoring** - WebSocket log streaming with structured logging
+- ✅ **O-series model support** - Proper parameter handling for o1, o3, o4 models
+- ✅ **Download functionality** - Clean Markdown files without page separators
+- ✅ **Error resilience** - Partial result recovery and graceful degradation
 
 ## Architecture
 
-The application will be built with:
+The application is built with:
 
-- **Backend**: Python 3.13+ with FastAPI framework  
-- **Frontend**: Web UI served directly from FastAPI with Jinja2 templating
-- **AI Integration**: OpenAI Python SDK for vision model processing
-- **PDF Processing**: pdf2image library (requires poppler system dependency)
-- **Package Management**: uv
+- **Backend**: Python 3.13+ with FastAPI framework and modern async patterns
+- **Frontend**: Responsive web UI with real-time log viewer and download functionality
+- **AI Integration**: AsyncOpenAI SDK with TaskGroup-based concurrent processing
+- **PDF Processing**: pdf2image library with configurable DPI and format
+- **Package Management**: uv with structured dependencies
 
 ## Core Components
 
@@ -24,19 +33,21 @@ The application will be built with:
 - `POST /convert` - Accepts multipart/form-data with PDF files, model selection, and detail level
 
 ### Processing Flow
-1. Receive uploaded PDF files via web form or API
-2. Rasterize each PDF page into high-resolution images (PNG/JPEG)
-3. Base64-encode images for OpenAI API transmission
-4. Send each page to selected OpenAI vision model with system prompt for TTRPG conversion
-5. Concatenate Markdown results with horizontal rules (---) between pages
-6. Return JSON response with filename keys and Markdown content values
+1. **Upload & Validation**: Receive PDF files via web form with multi-file support
+2. **PDF Processing**: Convert each page to high-resolution images (300 DPI PNG by default)
+3. **Concurrent Processing**: Use TaskGroup to process multiple pages simultaneously (1-100 concurrency)
+4. **Model Detection**: Automatically handle o-series models (max_completion_tokens, no temperature)
+5. **Error Recovery**: Continue processing successful pages even if some fail
+6. **Result Assembly**: Combine pages with clean spacing (no horizontal rules)
+7. **Download Ready**: Return clean Markdown with browser download functionality
 
 ### Key Features
-- Batch processing of multiple PDF files
-- Dynamic model selection from OpenAI API
-- Configurable image detail level (low/high, default: high)
-- Web UI for easy file upload and conversion
-- REST API for programmatic access
+- **High-concurrency processing** (1-100 simultaneous requests)
+- **All OpenAI models supported** including o1, o3, o4 series
+- **Real-time progress monitoring** via WebSocket log streaming
+- **Partial result recovery** - get successful pages even if some fail
+- **Clean Markdown output** without artificial page separators
+- **One-click downloads** with automatic .pdf → .md filename conversion
 
 ## Development Commands
 
@@ -104,11 +115,22 @@ MODUL8R_ENABLE_LOG_CAPTURE=true  # Enable WebSocket log streaming
 - Only active when clients are connected (performance optimized)
 - JSON messages: `{"type": "log_entry", "log": {...}}`
 
+## Recent Updates
+
+### Version 0.1.0 - Production Release
+- **Async Architecture**: Implemented Python 3.13 TaskGroup for concurrent processing
+- **Model Compatibility**: Added support for o-series models (o1, o3, o4) with proper parameters
+- **Enhanced UI**: Added download buttons and real-time log viewer
+- **Error Resilience**: Improved partial result recovery and graceful failure handling
+- **Performance**: Configurable concurrency from 1-100 concurrent requests
+- **Clean Output**: Removed page separators for seamless Markdown documents
+
+### Critical Fixes Applied
+- **Duplicate Logging**: Resolved WebSocket log duplication with proper deduplication
+- **Retry Loops**: Limited retry attempts to prevent endless processing cycles  
+- **TaskGroup Errors**: Improved exception handling for concurrent operations
+- **Memory Management**: Added cleanup for log entries and task results
+
 ## Development Notes
 
-This project prioritizes fidelity and accuracy in converting scanned tabletop RPG documents to clean, structured Markdown format. The vision-first approach means the quality of PDF-to-image conversion and prompt engineering for the AI model will be critical success factors.
-
-### Recent Fixes
-- **Duplicate Logging**: Resolved console log duplication issue in WebSocket capture processor
-- **Performance**: Optimized log processing to only run when needed
-- **Memory**: Added cleanup for captured log entries to prevent memory leaks
+This project prioritizes fidelity and accuracy in converting scanned tabletop RPG documents to clean, structured Markdown format. The modern async architecture ensures high performance while maintaining reliability through comprehensive error handling and partial result recovery.
