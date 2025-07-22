@@ -35,25 +35,25 @@ def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> Eve
 
 
 def capture_logs_processor(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
-    """Processor to capture logs for WebSocket streaming."""
-    # Skip if already processed to avoid duplicates
-    if event_dict.get('_captured'):
+    """Processor to capture logs for WebSocket streaming without console duplication."""
+    # Skip if already captured or if capture is disabled
+    if event_dict.get('_captured') or not settings.enable_log_capture:
         return event_dict
     
-    # Import here to avoid circular imports
+    # Only process for WebSocket capture if there are active subscribers
     try:
         global log_capture
-        if log_capture is not None and hasattr(log_capture, 'add_entry'):
-            # Mark as captured and make a copy for capture
+        if log_capture is not None and hasattr(log_capture, 'add_entry') and log_capture.has_subscribers():
+            # Create a clean copy for WebSocket without affecting console output
             capture_entry = dict(event_dict)
             capture_entry['_captured'] = True
+            capture_entry['_websocket_only'] = True
             log_capture.add_entry(capture_entry)
     except Exception:
         # Silently ignore logging capture errors to avoid recursion
         pass
     
-    # Mark the original as captured
-    event_dict['_captured'] = True
+    # Don't mark the original as captured to allow normal console processing
     return event_dict
 
 
@@ -126,39 +126,55 @@ class LogCapture:
         self._subscribers: list[Any] = []  # WebSocket connections
     
     def add_entry(self, entry: Dict[str, Any]) -> None:
-        """Add a log entry and notify subscribers."""
+        """Add a log entry and notify subscribers with deduplication."""
         import asyncio
         import json
+        import hashlib
         from datetime import datetime
+        
+        # Skip if not a WebSocket-only entry and we don't have subscribers
+        if not entry.get('_websocket_only') and not self.has_subscribers():
+            return
+        
+        # Create entry hash for deduplication
+        entry_content = f"{entry.get('event', '')}{entry.get('timestamp', '')}{entry.get('request_id', '')}"
+        entry_hash = hashlib.md5(entry_content.encode()).hexdigest()
+        
+        # Prevent duplicate entries within a short time window
+        if hasattr(self, '_recent_hashes'):
+            if entry_hash in self._recent_hashes:
+                return
+        else:
+            self._recent_hashes = set()
+        
+        self._recent_hashes.add(entry_hash)
+        
+        # Clean up old hashes (keep only last 100)
+        if len(self._recent_hashes) > 100:
+            self._recent_hashes = set(list(self._recent_hashes)[-50:])
         
         # Ensure entry has required fields
         if 'timestamp' not in entry:
             entry['timestamp'] = datetime.now().isoformat()
         if 'level' not in entry:
             entry['level'] = 'info'
-            
-        self.entries.append(entry)
+        
+        # Remove internal flags before storing/broadcasting
+        clean_entry = {k: v for k, v in entry.items() if not k.startswith('_')}
+        
+        self.entries.append(clean_entry)
         
         # Keep only the most recent entries
         if len(self.entries) > self.max_entries:
             self.entries = self.entries[-self.max_entries:]
         
-        # Notify WebSocket subscribers asynchronously
-        if self._subscribers:
+        # Notify WebSocket subscribers asynchronously only if we have active subscribers
+        if self.has_subscribers():
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self._notify_subscribers_async(entry))
+                loop.create_task(self._notify_subscribers_async(clean_entry))
             except RuntimeError:
                 # No event loop running, skip WebSocket broadcast
-                pass
-        
-        # Also notify via websocket manager if available
-        if hasattr(self, '_websocket_manager') and self._websocket_manager:
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._websocket_manager.broadcast_log(entry))
-            except RuntimeError:
-                # No event loop running
                 pass
     
     async def _notify_subscribers_async(self, entry: Dict[str, Any]) -> None:
@@ -199,6 +215,10 @@ class LogCapture:
         """Remove a WebSocket subscriber."""
         if subscriber in self._subscribers:
             self._subscribers.remove(subscriber)
+    
+    def has_subscribers(self) -> bool:
+        """Check if there are any active WebSocket subscribers."""
+        return len(self._subscribers) > 0
 
 
 # Global log capture instance

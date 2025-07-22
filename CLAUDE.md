@@ -57,6 +57,7 @@ uv run pytest  # Run all tests
 uv run pytest tests/test_services.py  # Run unit tests only
 uv run pytest tests/test_main.py  # Run API tests only
 uv run pytest tests/test_playwright.py  # Run web UI tests only
+uv run python test_logging_fix.py  # Validate logging configuration
 ```
 
 ### Code Quality
@@ -75,6 +76,39 @@ The application requires an OpenAI API key. Set the `OPENAI_API_KEY` environment
   - Ubuntu/Debian: `apt-get install poppler-utils`
   - Windows: Download from poppler website
 
+## Logging System
+
+The application uses structured logging with the following features:
+
+### Configuration
+- **JSON Format**: Structured logs with consistent fields (timestamp, level, request_id, etc.)
+- **Request Correlation**: All logs within a request share the same request_id for tracing
+- **WebSocket Streaming**: Real-time log streaming to web clients (configurable)
+- **Deduplication**: Prevents duplicate log entries
+
+### Settings
+```bash
+MODUL8R_LOG_LEVEL=INFO           # DEBUG, INFO, WARNING, ERROR
+MODUL8R_LOG_FORMAT=json          # json or console
+MODUL8R_ENABLE_LOG_CAPTURE=true  # Enable WebSocket log streaming
+```
+
+### Log Levels
+- **DEBUG**: Detailed processing information
+- **INFO**: Standard operation events (requests, processing status)
+- **WARNING**: Non-critical issues (API fallbacks, file skips)
+- **ERROR**: Processing failures and exceptions
+
+### WebSocket Log Streaming
+- Endpoint: `ws://localhost:8000/ws/logs`
+- Only active when clients are connected (performance optimized)
+- JSON messages: `{"type": "log_entry", "log": {...}}`
+
 ## Development Notes
 
 This project prioritizes fidelity and accuracy in converting scanned tabletop RPG documents to clean, structured Markdown format. The vision-first approach means the quality of PDF-to-image conversion and prompt engineering for the AI model will be critical success factors.
+
+### Recent Fixes
+- **Duplicate Logging**: Resolved console log duplication issue in WebSocket capture processor
+- **Performance**: Optimized log processing to only run when needed
+- **Memory**: Added cleanup for captured log entries to prevent memory leaks

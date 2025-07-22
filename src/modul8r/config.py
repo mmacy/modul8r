@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"
     log_correlation_id_header: str = "X-Correlation-ID"
+    enable_log_capture: bool = True  # Enable WebSocket log streaming
 
     # Server Configuration
     server_host: str = "127.0.0.1"
