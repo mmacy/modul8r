@@ -130,8 +130,8 @@ async def convert_pdfs(
                     )
                     
                     if markdown_pages:
-                        # Combine all pages with horizontal rules
-                        full_markdown = "\n\n---\n\n".join(markdown_pages)
+                        # Combine all pages with double line breaks (no horizontal rules)
+                        full_markdown = "\n\n".join(markdown_pages)
                         results[filename] = full_markdown
                         logger.info("Successfully processed file", 
                                   filename=filename,

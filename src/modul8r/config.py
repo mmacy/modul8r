@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # Rate Limiting
     requests_per_minute: int = 60
-    retry_max_attempts: int = 3
+    retry_max_attempts: int = 1  # Reduce retries to prevent loops
     retry_base_delay: float = 1.0
     retry_max_delay: float = 60.0
 

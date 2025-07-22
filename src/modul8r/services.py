@@ -43,7 +43,8 @@ class OpenAIService:
             multiplier=settings.retry_base_delay,
             max=settings.retry_max_delay
         ),
-        retry=retry_if_exception_type((Exception,))
+        retry=retry_if_exception_type((Exception,)),
+        reraise=True  # Ensure final exception is raised after all retries
     )
     async def _process_single_image(
         self,
@@ -73,9 +74,10 @@ class OpenAIService:
         async with self.semaphore:
             try:
                 async with asyncio.timeout(settings.openai_timeout):
-                    response = await self.client.chat.completions.create(
-                        model=model,
-                        messages=[
+                    # Prepare the request parameters
+                    request_params = {
+                        "model": model,
+                        "messages": [
                             {"role": "system", "content": system_prompt},
                             {
                                 "role": "user", 
@@ -89,10 +91,20 @@ class OpenAIService:
                                     }
                                 ]
                             }
-                        ],
-                        max_tokens=settings.openai_max_tokens,
-                        temperature=settings.openai_temperature
-                    )
+                        ]
+                    }
+                    
+                    # Handle o-series model parameters differently
+                    if model.startswith('o'):
+                        request_params["max_completion_tokens"] = settings.openai_max_tokens
+                        # O-series models only support temperature=1 (default), so don't set it
+                        self.logger.info("Using o-series model parameters", 
+                                       model=model, page=page_index + 1)
+                    else:
+                        request_params["max_tokens"] = settings.openai_max_tokens
+                        request_params["temperature"] = settings.openai_temperature
+                    
+                    response = await self.client.chat.completions.create(**request_params)
                 
                 content = response.choices[0].message.content or ""
                 self.logger.info("Successfully processed page", page=page_index + 1, content_length=len(content))
@@ -144,25 +156,27 @@ class OpenAIService:
             # Handle any exception from TaskGroup
             self.logger.error("Error during batch processing", error=str(e))
             
-            # Try to salvage partial results from successful tasks if they exist
+            # For TaskGroup failures, try to salvage partial results
             if 'tasks' in locals():
                 successful_results = []
-                failed_pages = []
+                failed_count = 0
                 
                 for i, task in enumerate(tasks):
                     try:
-                        if task.done() and not task.cancelled() and not task.exception():
-                            page_index, content = task.result()
-                            successful_results.append((page_index, content))
-                        else:
-                            failed_pages.append(i + 1)
-                            if task.done() and task.exception():
-                                self.logger.error("Task failed with exception", 
+                        if task.done() and not task.cancelled():
+                            if task.exception() is None:
+                                page_index, content = task.result()
+                                successful_results.append((page_index, content))
+                            else:
+                                failed_count += 1
+                                self.logger.debug("Task failed", 
                                                 page=i + 1, 
                                                 error=str(task.exception()))
+                        else:
+                            failed_count += 1
                     except Exception as task_e:
-                        self.logger.error("Error checking task result", page=i + 1, error=str(task_e))
-                        failed_pages.append(i + 1)
+                        failed_count += 1
+                        self.logger.debug("Error checking task result", page=i + 1, error=str(task_e))
                 
                 if successful_results:
                     # Sort and return partial results
@@ -171,13 +185,13 @@ class OpenAIService:
                     
                     self.logger.warning("Partial processing completed with errors", 
                                       successful_pages=len(partial_results),
-                                      failed_pages=len(failed_pages),
+                                      failed_pages=failed_count,
                                       total_pages=total_pages)
                     return partial_results
             
-            # If no partial results available, re-raise the exception
-            self.logger.error("All pages failed to process")
-            raise Exception(f"Failed to process all {total_pages} pages: {str(e)}")
+            # If no partial results available, return empty list instead of failing
+            self.logger.error("No pages could be processed successfully")
+            return []
 
 
 class PDFService:

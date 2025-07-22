@@ -122,27 +122,16 @@ class LogStreamManager:
 log_stream_manager = LogStreamManager()
 
 
-# Enhanced log capture to work with WebSocket broadcasting
+# Enhanced log capture to work with WebSocket broadcasting  
 class WebSocketLogCapture:
     """Enhanced log capture that broadcasts to WebSocket clients."""
     
     def __init__(self):
-        self.original_add_entry = log_capture.add_entry
-        # Override the add_entry method to include WebSocket broadcasting
-        log_capture.add_entry = self._enhanced_add_entry
-    
-    def _enhanced_add_entry(self, entry: Dict[str, Any]):
-        """Enhanced add_entry that includes WebSocket broadcasting."""
-        # Call the original method
-        self.original_add_entry(entry)
-        
-        # Broadcast to WebSocket clients asynchronously
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(log_stream_manager.broadcast_log(entry))
-        except RuntimeError:
-            # No event loop running, skip WebSocket broadcast
-            pass
+        # Don't override the original method, just enhance the log_capture instance
+        self._original_add_entry = getattr(log_capture, 'add_entry', None)
+        if self._original_add_entry:
+            # Store reference but don't override to avoid duplication
+            log_capture._websocket_manager = log_stream_manager
 
 
 # Initialize the enhanced log capture on module import

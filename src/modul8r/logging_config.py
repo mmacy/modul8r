@@ -36,12 +36,24 @@ def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> Eve
 
 def capture_logs_processor(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
     """Processor to capture logs for WebSocket streaming."""
+    # Skip if already processed to avoid duplicates
+    if event_dict.get('_captured'):
+        return event_dict
+    
     # Import here to avoid circular imports
-    global log_capture
-    if log_capture is not None:
-        # Make a copy of the event_dict for capture
-        capture_entry = dict(event_dict)
-        log_capture.add_entry(capture_entry)
+    try:
+        global log_capture
+        if log_capture is not None and hasattr(log_capture, 'add_entry'):
+            # Mark as captured and make a copy for capture
+            capture_entry = dict(event_dict)
+            capture_entry['_captured'] = True
+            log_capture.add_entry(capture_entry)
+    except Exception:
+        # Silently ignore logging capture errors to avoid recursion
+        pass
+    
+    # Mark the original as captured
+    event_dict['_captured'] = True
     return event_dict
 
 
@@ -138,6 +150,15 @@ class LogCapture:
                 loop.create_task(self._notify_subscribers_async(entry))
             except RuntimeError:
                 # No event loop running, skip WebSocket broadcast
+                pass
+        
+        # Also notify via websocket manager if available
+        if hasattr(self, '_websocket_manager') and self._websocket_manager:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._websocket_manager.broadcast_log(entry))
+            except RuntimeError:
+                # No event loop running
                 pass
     
     async def _notify_subscribers_async(self, entry: Dict[str, Any]) -> None:

@@ -78,6 +78,25 @@
         .file-result h3 {
             margin-top: 0;
             color: #007bff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .download-btn:hover {
+            background-color: #218838;
         }
         .markdown-content {
             background-color: #f8f9fa;
@@ -325,17 +344,51 @@
                 const fileResult = document.createElement('div');
                 fileResult.className = 'file-result';
                 
-                const title = document.createElement('h3');
-                title.textContent = filename;
+                const header = document.createElement('h3');
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = filename;
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.innerHTML = '⬇️ Download';
+                downloadBtn.onclick = () => downloadMarkdown(filename, markdown);
+                
+                header.appendChild(titleSpan);
+                header.appendChild(downloadBtn);
                 
                 const content = document.createElement('div');
                 content.className = 'markdown-content';
                 content.textContent = markdown;
                 
-                fileResult.appendChild(title);
+                fileResult.appendChild(header);
                 fileResult.appendChild(content);
                 results.appendChild(fileResult);
             }
+        }
+        
+        function downloadMarkdown(filename, content) {
+            // Create a blob with the markdown content
+            const blob = new Blob([content], { type: 'text/markdown' });
+            
+            // Create a temporary URL for the blob
+            const url = URL.createObjectURL(blob);
+            
+            // Create a temporary download link
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Generate filename: replace .pdf extension with .md
+            const markdownFilename = filename.replace(/\.pdf$/i, '.md');
+            link.download = markdownFilename;
+            
+            // Trigger the download
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
         
         function toggleLogViewer(show) {
