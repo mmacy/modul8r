@@ -6,19 +6,54 @@ from typing import List, Optional, Dict, Any
 import asyncio
 import uuid
 import json
+from contextlib import asynccontextmanager
 
 from .services import OpenAIService, PDFService
 from .config import settings
 from .logging_config import get_logger, set_request_context, generate_request_id
 from .websocket_handlers import log_stream_manager
+from .performance_monitor import start_performance_monitoring, stop_performance_monitoring, get_global_performance_stats
 
 # Configure logging on startup
 logger = get_logger("main")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown events."""
+    # Startup
+    logger.info("Starting Phase 1 foundation safeguards", 
+                throttling_enabled=settings.enable_message_throttling,
+                memory_management_enabled=settings.enable_enhanced_memory_management,
+                performance_monitoring_enabled=settings.enable_performance_monitoring)
+    
+    # Start performance monitoring if enabled
+    if settings.enable_performance_monitoring:
+        start_performance_monitoring()
+        logger.info("Performance monitoring initialized")
+    else:
+        logger.info("Performance monitoring disabled")
+    
+    logger.info("Phase 1 foundation safeguards ready")
+    
+    yield  # Application runs here
+    
+    # Shutdown
+    logger.info("Shutting down Phase 1 foundation safeguards")
+    
+    # Stop performance monitoring if it was enabled
+    if settings.enable_performance_monitoring:
+        stop_performance_monitoring()
+        logger.info("Performance monitoring stopped")
+    
+    logger.info("Phase 1 foundation safeguards shutdown complete")
+
+
 app = FastAPI(
     title="modul8r",
     description="Convert TTRPG adventure module PDFs to Markdown",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -217,6 +252,48 @@ async def get_status():
             "default_model": settings.openai_default_model
         }
     }
+
+
+if settings.enable_phase1_status_endpoint:
+    @app.get("/status/phase1")
+    async def get_phase1_status():
+        """Get Phase 1 foundation safeguards status and monitoring statistics."""
+        logger.info("Phase 1 status requested")
+        
+        # Get integrated performance and WebSocket statistics
+        integrated_stats = log_stream_manager.get_performance_integrated_stats()
+        
+        # Get memory statistics from enhanced log capture
+        from .logging_config import log_capture
+        memory_stats = log_capture.get_memory_stats() if hasattr(log_capture, 'get_memory_stats') else {}
+        
+        return {
+            "phase1_status": "active",
+            "version": "0.1.0",
+            "feature_flags": {
+                "message_throttling": settings.enable_message_throttling,
+                "memory_management": settings.enable_enhanced_memory_management,
+                "performance_monitoring": settings.enable_performance_monitoring
+            },
+            "safeguards": {
+                "message_throttling": {
+                    "status": "active" if settings.enable_message_throttling else "disabled",
+                    "circuit_breaker_active": integrated_stats["websocket"].get("circuit_breaker_active", False),
+                    "current_rate": integrated_stats["websocket"].get("current_rate", 0),
+                    "pending_messages": integrated_stats["websocket"].get("pending_messages", 0)
+                },
+                "memory_management": {
+                    "status": "active" if settings.enable_enhanced_memory_management else "disabled",
+                    **memory_stats
+                },
+                "performance_monitoring": {
+                    "status": "active" if integrated_stats["event_loop"].get("monitoring_active", False) else "inactive",
+                    **integrated_stats["event_loop"]
+                }
+            },
+            "overall_health": integrated_stats["integrated_health"],
+            "active_connections": integrated_stats["websocket"].get("active_connections", 0)
+        }
 
 if __name__ == "__main__":
     import uvicorn
