@@ -1,0 +1,56 @@
+[project]
+name = "modul8r"
+version = "0.1.0"
+description = "Convert TTRPG adventure module PDFs to Markdown"
+authors = [{ name = "Marsh Macy" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "jinja2",
+    "openai",
+    "pdf2image", 
+    "python-multipart",
+    "uvicorn[standard]",
+    "structlog",
+    "pydantic-settings",
+    "tenacity",
+    "asyncio-throttle",
+    "websockets",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio", 
+    "pytest-mock",
+    "httpx",
+    "playwright",
+    "ruff",
+    "mypy",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["I", "N", "UP", "RUF", "B", "SIM", "C90"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"

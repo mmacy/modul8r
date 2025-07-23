@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>modul8r - PDF to Markdown Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, button {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input[type="file"] {
+            width: 100%;
+        }
+        select {
+            width: 100%;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .output-area {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            min-height: 200px;
+        }
+        .file-result {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .file-result h3 {
+            margin-top: 0;
+            color: #007bff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .download-btn:hover {
+            background-color: #218838;
+        }
+        .markdown-content {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+        }
+        .log-viewer {
+            display: none;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .log-header {
+            padding: 10px 15px;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-content {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .log-entry.info {
+            color: #4da6ff;
+        }
+        .log-entry.warning {
+            color: #ffcc00;
+        }
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+        .log-controls {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        .log-controls button {
+            padding: 5px 10px;
+            font-size: 12px;
+            width: auto;
+        }
+        .connection-status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .connection-status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .connection-status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>modul8r</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Convert TTRPG adventure module PDFs to Markdown
+        </p>
+        
+        <form id="convertForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="files">Select PDF files:</label>
+                <input type="file" id="files" name="files" multiple accept=".pdf" required>
+                <small style="color: #666;">You can select multiple PDF files for batch processing</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="model">Model:</label>
+                <select id="model" name="model">
+                    <option value="">Loading models...</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="detail">Image detail level:</label>
+                <select id="detail" name="detail">
+                    <option value="high" selected>High</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="concurrency">Concurrent requests:</label>
+                <input type="range" id="concurrency" name="concurrency" min="1" max="100" value="3" 
+                       oninput="document.getElementById('concurrencyValue').textContent = this.value">
+                <span id="concurrencyValue">3</span>
+                <small style="color: #666;">Number of images processed simultaneously (1-100)</small>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="showLogs" onchange="toggleLogViewer(this.checked)">
+                    Show logs
+                </label>
+            </div>
+            
+            <button type="submit" id="convertBtn">Convert</button>
+        </form>
+        
+        <div id="logViewer" class="log-viewer">
+            <div class="log-header">
+                <span>Real-time logs</span>
+                <div>
+                    <span id="connectionStatus" class="connection-status disconnected">Disconnected</span>
+                </div>
+            </div>
+            <div id="logContent" class="log-content"></div>
+            <div class="log-controls">
+                <button onclick="clearLogs()">Clear logs</button>
+                <button onclick="scrollToBottom()">Scroll to bottom</button>
+                <label>
+                    <input type="checkbox" id="autoScroll" checked> Auto-scroll
+                </label>
+            </div>
+        </div>
+        
+        <div id="outputArea" class="output-area" style="display: none;">
+            <h2>Results</h2>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let logEntries = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModels();
+            
+            document.getElementById('convertForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                convertFiles();
+            });
+        });
+
+        async function loadModels() {
+            try {
+                const response = await fetch('/models');
+                const models = await response.json();
+                const select = document.getElementById('model');
+                select.innerHTML = '';
+                
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    select.appendChild(option);
+                });
+                
+                if (models.length > 0) {
+                    select.value = models[0];
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                document.getElementById('model').innerHTML = '<option value="">Failed to load models</option>';
+            }
+        }
+
+        async function convertFiles() {
+            const form = document.getElementById('convertForm');
+            const formData = new FormData(form);
+            const btn = document.getElementById('convertBtn');
+            const outputArea = document.getElementById('outputArea');
+            const results = document.getElementById('results');
+            
+            btn.disabled = true;
+            btn.textContent = 'Converting...';
+            outputArea.style.display = 'block';
+            results.innerHTML = '<div class="loading">Processing PDFs...</div>';
+            
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error('Conversion failed:', error);
+                results.innerHTML = `<div class="error">Conversion failed: ${error.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Convert';
+            }
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            
+            if (Object.keys(data).length === 0) {
+                results.innerHTML = '<div class="error">No valid PDF files were processed.</div>';
+                return;
+            }
+            
+            for (const [filename, markdown] of Object.entries(data)) {
+                const fileResult = document.createElement('div');
+                fileResult.className = 'file-result';
+                
+                const header = document.createElement('h3');
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = filename;
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.innerHTML = '⬇️ Download';
+                downloadBtn.onclick = () => downloadMarkdown(filename, markdown);
+                
+                header.appendChild(titleSpan);
+                header.appendChild(downloadBtn);
+                
+                const content = document.createElement('div');
+                content.className = 'markdown-content';
+                content.textContent = markdown;
+                
+                fileResult.appendChild(header);
+                fileResult.appendChild(content);
+                results.appendChild(fileResult);
+            }
+        }
+        
+        function downloadMarkdown(filename, content) {
+            // Create a blob with the markdown content
+            const blob = new Blob([content], { type: 'text/markdown' });
+            
+            // Create a temporary URL for the blob
+            const url = URL.createObjectURL(blob);
+            
+            // Create a temporary download link
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Generate filename: replace .pdf extension with .md
+            const markdownFilename = filename.replace(/\.pdf$/i, '.md');
+            link.download = markdownFilename;
+            
+            // Trigger the download
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        function toggleLogViewer(show) {
+            const logViewer = document.getElementById('logViewer');
+            if (show) {
+                logViewer.style.display = 'block';
+                connectWebSocket();
+            } else {
+                logViewer.style.display = 'none';
+                disconnectWebSocket();
+            }
+        }
+        
+        function connectWebSocket() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                return;
+            }
+            
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function() {
+                updateConnectionStatus('connected');
+            };
+            
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'log_entry') {
+                    addLogEntry(data.log);
+                } else if (data.type === 'log_history') {
+                    data.logs.forEach(log => addLogEntry(log));
+                }
+            };
+            
+            websocket.onclose = function() {
+                updateConnectionStatus('disconnected');
+                // Attempt to reconnect after 5 seconds
+                setTimeout(() => {
+                    if (document.getElementById('showLogs').checked) {
+                        connectWebSocket();
+                    }
+                }, 5000);
+            };
+            
+            websocket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus('disconnected');
+            };
+        }
+        
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            updateConnectionStatus('disconnected');
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            statusElement.className = `connection-status ${status}`;
+        }
+        
+        function addLogEntry(logData) {
+            logEntries.push(logData);
+            
+            const logContent = document.getElementById('logContent');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${logData.level ? logData.level.toLowerCase() : 'info'}`;
+            
+            const timestamp = new Date(logData.timestamp || Date.now()).toLocaleTimeString();
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${formatLogMessage(logData)}`;
+            
+            logContent.appendChild(logEntry);
+            
+            // Keep only the last 1000 entries
+            while (logContent.children.length > 1000) {
+                logContent.removeChild(logContent.firstChild);
+            }
+            
+            // Auto-scroll if enabled
+            if (document.getElementById('autoScroll').checked) {
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+        }
+        
+        function formatLogMessage(logData) {
+            let message = logData.event || logData.message || '';
+            
+            // Add context information if available
+            const contextKeys = ['request_id', 'filename', 'page', 'model', 'error'];
+            const context = [];
+            
+            for (const key of contextKeys) {
+                if (logData[key]) {
+                    context.push(`${key}=${logData[key]}`);
+                }
+            }
+            
+            if (context.length > 0) {
+                message += ` <span style="color: #888;">(${context.join(', ')})</span>`;
+            }
+            
+            return message;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logContent').innerHTML = '';
+            logEntries = [];
+        }
+        
+        function scrollToBottom() {
+            const logContent = document.getElementById('logContent');
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+    </script>
+</body>
+</html>
