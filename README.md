@@ -262,7 +262,3 @@ uv sync --dev
 - Lower `MODUL8R_PDF_DPI` for faster processing (default: 300, min: 150)
 - Use "low" detail level for OpenAI vision processing
 - Note: retry_max_attempts is set to 1 to prevent retry loops
-
-## License
-
-MIT
