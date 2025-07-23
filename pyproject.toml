@@ -54,3 +54,8 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "playwright>=1.53.0",
+]
