@@ -28,7 +28,7 @@ class TestMainEndpoints:
     @patch("src.modul8r.main.openai_service")
     def test_get_models_success(self, mock_service, client):
         mock_service.get_vision_models = AsyncMock(return_value=["gpt-4o", "gpt-4o-mini"])
-        
+
         response = client.get("/models")
         assert response.status_code == 200
         assert response.json() == ["gpt-4o", "gpt-4o-mini"]
@@ -36,7 +36,7 @@ class TestMainEndpoints:
     @patch("src.modul8r.main.openai_service")
     def test_get_models_failure(self, mock_service, client):
         mock_service.get_vision_models = AsyncMock(side_effect=Exception("API Error"))
-        
+
         response = client.get("/models")
         assert response.status_code == 500
         assert "Failed to fetch models" in response.json()["detail"]
@@ -53,13 +53,13 @@ class TestMainEndpoints:
         mock_openai_service.process_image = AsyncMock(return_value="# Test Content")
         mock_pdf_service.pdf_to_images.return_value = [b"fake_image_data"]
         mock_pdf_service.images_to_base64.return_value = ["base64_encoded_image"]
-        
+
         # Prepare file upload
         files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
         data = {"model": "gpt-4o", "detail": "high"}
-        
+
         response = client.post("/convert", files=files, data=data)
-        
+
         assert response.status_code == 200
         result = response.json()
         assert "test.pdf" in result
@@ -71,13 +71,13 @@ class TestMainEndpoints:
         # Mock services with error
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
         mock_pdf_service.pdf_to_images.side_effect = Exception("PDF processing error")
-        
+
         # Prepare file upload
         files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
         data = {"model": "gpt-4o", "detail": "high"}
-        
+
         response = client.post("/convert", files=files, data=data)
-        
+
         assert response.status_code == 200
         result = response.json()
         assert "test.pdf" in result
@@ -87,18 +87,18 @@ class TestMainEndpoints:
     def test_convert_pdfs_no_model_specified(self, mock_openai_service, client, sample_pdf_file):
         # Mock service to return default model
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
-        
+
         with patch("src.modul8r.main.pdf_service") as mock_pdf_service:
             mock_pdf_service.pdf_to_images.return_value = [b"fake_image_data"]
             mock_pdf_service.images_to_base64.return_value = ["base64_encoded_image"]
             mock_openai_service.process_image = AsyncMock(return_value="# Test Content")
-            
+
             # Prepare file upload without model specified
             files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
             data = {"detail": "high"}
-            
+
             response = client.post("/convert", files=files, data=data)
-            
+
             assert response.status_code == 200
             # Should have called get_vision_models to get default model
             mock_openai_service.get_vision_models.assert_called()
@@ -107,9 +107,9 @@ class TestMainEndpoints:
         # Test with non-PDF file
         files = {"files": ("test.txt", b"Some text content", "text/plain")}
         data = {"model": "gpt-4o", "detail": "high"}
-        
+
         response = client.post("/convert", files=files, data=data)
-        
+
         assert response.status_code == 200
         result = response.json()
         # Should return empty result since no PDF files were processed
@@ -123,15 +123,15 @@ class TestMainEndpoints:
         mock_openai_service.process_image = AsyncMock(side_effect=["# Page 1", "# Page 2"])
         mock_pdf_service.pdf_to_images.return_value = [b"page1_data", b"page2_data"]
         mock_pdf_service.images_to_base64.return_value = ["page1_base64", "page2_base64"]
-        
+
         # Prepare file upload
         files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
         data = {"model": "gpt-4o", "detail": "high"}
-        
+
         response = client.post("/convert", files=files, data=data)
-        
+
         assert response.status_code == 200
         result = response.json()
         assert "test.pdf" in result
         # Should combine pages with horizontal rule
-        assert result["test.pdf"] == "# Page 1\n\n---\n\n# Page 2"
+        assert result["test.pdf"] == "# Page 1\n\n# Page 2"

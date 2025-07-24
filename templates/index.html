@@ -198,21 +198,21 @@
         <p style="text-align: center; color: #666; margin-bottom: 30px;">
             Convert TTRPG adventure module PDFs to Markdown
         </p>
-        
+
         <form id="convertForm" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="files">Select PDF files:</label>
                 <input type="file" id="files" name="files" multiple accept=".pdf" required>
                 <small style="color: #666;">You can select multiple PDF files for batch processing</small>
             </div>
-            
+
             <div class="form-group">
                 <label for="model">Model:</label>
                 <select id="model" name="model">
                     <option value="">Loading models...</option>
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="detail">Image detail level:</label>
                 <select id="detail" name="detail">
@@ -220,25 +220,25 @@
                     <option value="low">Low</option>
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label for="concurrency">Concurrent requests:</label>
-                <input type="range" id="concurrency" name="concurrency" min="1" max="100" value="3" 
+                <input type="range" id="concurrency" name="concurrency" min="1" max="100" value="64"
                        oninput="document.getElementById('concurrencyValue').textContent = this.value">
-                <span id="concurrencyValue">3</span>
+                <span id="concurrencyValue">64</span>
                 <small style="color: #666;">Number of images processed simultaneously (1-100)</small>
             </div>
-            
+
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="showLogs" onchange="toggleLogViewer(this.checked)">
                     Show logs
                 </label>
             </div>
-            
+
             <button type="submit" id="convertBtn">Convert</button>
         </form>
-        
+
         <div id="logViewer" class="log-viewer">
             <div class="log-header">
                 <span>Real-time logs</span>
@@ -255,7 +255,7 @@
                 </label>
             </div>
         </div>
-        
+
         <div id="outputArea" class="output-area" style="display: none;">
             <h2>Results</h2>
             <div id="results"></div>
@@ -265,10 +265,10 @@
     <script>
         let websocket = null;
         let logEntries = [];
-        
+
         document.addEventListener('DOMContentLoaded', function() {
             loadModels();
-            
+
             document.getElementById('convertForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 convertFiles();
@@ -281,14 +281,14 @@
                 const models = await response.json();
                 const select = document.getElementById('model');
                 select.innerHTML = '';
-                
+
                 models.forEach(model => {
                     const option = document.createElement('option');
                     option.value = model;
                     option.textContent = model;
                     select.appendChild(option);
                 });
-                
+
                 if (models.length > 0) {
                     select.value = models[0];
                 }
@@ -304,22 +304,22 @@
             const btn = document.getElementById('convertBtn');
             const outputArea = document.getElementById('outputArea');
             const results = document.getElementById('results');
-            
+
             btn.disabled = true;
             btn.textContent = 'Converting...';
             outputArea.style.display = 'block';
             results.innerHTML = '<div class="loading">Processing PDFs...</div>';
-            
+
             try {
                 const response = await fetch('/convert', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
                 displayResults(data);
             } catch (error) {
@@ -334,63 +334,63 @@
         function displayResults(data) {
             const results = document.getElementById('results');
             results.innerHTML = '';
-            
+
             if (Object.keys(data).length === 0) {
                 results.innerHTML = '<div class="error">No valid PDF files were processed.</div>';
                 return;
             }
-            
+
             for (const [filename, markdown] of Object.entries(data)) {
                 const fileResult = document.createElement('div');
                 fileResult.className = 'file-result';
-                
+
                 const header = document.createElement('h3');
-                
+
                 const titleSpan = document.createElement('span');
                 titleSpan.textContent = filename;
-                
+
                 const downloadBtn = document.createElement('button');
                 downloadBtn.className = 'download-btn';
                 downloadBtn.innerHTML = '⬇️ Download';
                 downloadBtn.onclick = () => downloadMarkdown(filename, markdown);
-                
+
                 header.appendChild(titleSpan);
                 header.appendChild(downloadBtn);
-                
+
                 const content = document.createElement('div');
                 content.className = 'markdown-content';
                 content.textContent = markdown;
-                
+
                 fileResult.appendChild(header);
                 fileResult.appendChild(content);
                 results.appendChild(fileResult);
             }
         }
-        
+
         function downloadMarkdown(filename, content) {
             // Create a blob with the markdown content
             const blob = new Blob([content], { type: 'text/markdown' });
-            
+
             // Create a temporary URL for the blob
             const url = URL.createObjectURL(blob);
-            
+
             // Create a temporary download link
             const link = document.createElement('a');
             link.href = url;
-            
+
             // Generate filename: replace .pdf extension with .md
             const markdownFilename = filename.replace(/\.pdf$/i, '.md');
             link.download = markdownFilename;
-            
+
             // Trigger the download
             document.body.appendChild(link);
             link.click();
-            
+
             // Clean up
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         }
-        
+
         function toggleLogViewer(show) {
             const logViewer = document.getElementById('logViewer');
             if (show) {
@@ -401,31 +401,31 @@
                 disconnectWebSocket();
             }
         }
-        
+
         function connectWebSocket() {
             if (websocket && websocket.readyState === WebSocket.OPEN) {
                 return;
             }
-            
+
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
-            
+
             websocket = new WebSocket(wsUrl);
-            
+
             websocket.onopen = function() {
                 updateConnectionStatus('connected');
             };
-            
+
             websocket.onmessage = function(event) {
                 const data = JSON.parse(event.data);
-                
+
                 if (data.type === 'log_entry') {
                     addLogEntry(data.log);
                 } else if (data.type === 'log_history') {
                     data.logs.forEach(log => addLogEntry(log));
                 }
             };
-            
+
             websocket.onclose = function() {
                 updateConnectionStatus('disconnected');
                 // Attempt to reconnect after 5 seconds
@@ -435,13 +435,13 @@
                     }
                 }, 5000);
             };
-            
+
             websocket.onerror = function(error) {
                 console.error('WebSocket error:', error);
                 updateConnectionStatus('disconnected');
             };
         }
-        
+
         function disconnectWebSocket() {
             if (websocket) {
                 websocket.close();
@@ -449,61 +449,61 @@
             }
             updateConnectionStatus('disconnected');
         }
-        
+
         function updateConnectionStatus(status) {
             const statusElement = document.getElementById('connectionStatus');
             statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
             statusElement.className = `connection-status ${status}`;
         }
-        
+
         function addLogEntry(logData) {
             logEntries.push(logData);
-            
+
             const logContent = document.getElementById('logContent');
             const logEntry = document.createElement('div');
             logEntry.className = `log-entry ${logData.level ? logData.level.toLowerCase() : 'info'}`;
-            
+
             const timestamp = new Date(logData.timestamp || Date.now()).toLocaleTimeString();
             logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${formatLogMessage(logData)}`;
-            
+
             logContent.appendChild(logEntry);
-            
+
             // Keep only the last 1000 entries
             while (logContent.children.length > 1000) {
                 logContent.removeChild(logContent.firstChild);
             }
-            
+
             // Auto-scroll if enabled
             if (document.getElementById('autoScroll').checked) {
                 logContent.scrollTop = logContent.scrollHeight;
             }
         }
-        
+
         function formatLogMessage(logData) {
             let message = logData.event || logData.message || '';
-            
+
             // Add context information if available
             const contextKeys = ['request_id', 'filename', 'page', 'model', 'error'];
             const context = [];
-            
+
             for (const key of contextKeys) {
                 if (logData[key]) {
                     context.push(`${key}=${logData[key]}`);
                 }
             }
-            
+
             if (context.length > 0) {
                 message += ` <span style="color: #888;">(${context.join(', ')})</span>`;
             }
-            
+
             return message;
         }
-        
+
         function clearLogs() {
             document.getElementById('logContent').innerHTML = '';
             logEntries = [];
         }
-        
+
         function scrollToBottom() {
             const logContent = document.getElementById('logContent');
             logContent.scrollTop = logContent.scrollHeight;

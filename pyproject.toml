@@ -27,6 +27,9 @@ dev = [
     "pytest-mock",
     "httpx",
     "playwright",
+    "pyyaml",
+    "jsonschema",
+    "requests",
     "ruff",
     "mypy",
 ]
@@ -48,14 +51,18 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
+    "jsonschema>=4.25.0",
+    "mypy>=1.17.0",
     "playwright>=1.53.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-mock>=3.14.1",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.4",
+    "ruff>=0.12.4",
 ]
+

@@ -19,16 +19,15 @@ modul8r converts PDF pages to images and sends them to OpenAI's vision models fo
 
 - Python 3.13 or higher
 - OpenAI API key
-- System dependencies:
+- [Poppler](https://poppler.freedesktop.org/)
   - **macOS**: `brew install poppler`
   - **Ubuntu/Debian**: `apt-get install poppler-utils`
-  - **Windows**: Download poppler from the official website
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/modul8r.git
+git clone https://github.com/mmacy/modul8r.git
 cd modul8r
 
 # Install dependencies
@@ -64,12 +63,12 @@ The web interface will be available at http://127.0.0.1:8000
 
 ### Web interface
 
-1. Open your browser to http://127.0.0.1:8000
+1. Navigate to http://127.0.0.1:8000
 2. Upload PDF file(s)
-3. Select OpenAI model (defaults to first available model)
+3. Select OpenAI model (latest non-reasoning model is recommended)
 4. Set detail level (low/high - defaults to high)
-5. Set concurrency (1-100 - defaults to 3)
-6. Click "Convert"
+5. Set concurrency (1-100 - defaults to 64)
+6. Select **Convert**
 7. View processing logs via WebSocket connection
 8. Receive JSON response with converted Markdown
 
@@ -90,9 +89,9 @@ Convert PDF files to Markdown (accepts multipart form data):
 ```bash
 curl -X POST \
   -F "files=@document.pdf" \
-  -F "model=gpt-4o" \
+  -F "model=gpt-4.1-nano" \
   -F "detail=high" \
-  -F "concurrency=5" \
+  -F "concurrency=16" \
   http://localhost:8000/convert
 ```
 
@@ -100,11 +99,33 @@ Returns JSON: `{"filename.pdf": "converted markdown content"}`
 
 #### GET /config
 
-Returns current configuration settings.
+Returns current configuration settings:
+
+```bash
+curl http://localhost:8000/config
+```
+
+Returns JSON with key configuration values like max_concurrent_requests, openai_default_model, pdf_dpi, etc.
 
 #### GET /status
 
-Application health check and status.
+Application health check and status:
+
+```bash
+curl http://localhost:8000/status
+```
+
+Returns application health status, version, and basic settings.
+
+#### GET /status/phase1 (Optional)
+
+Phase 1 foundation safeguards monitoring endpoint (enabled by default):
+
+```bash
+curl http://localhost:8000/status/phase1
+```
+
+Returns detailed monitoring statistics including message throttling, memory management, and performance metrics.
 
 #### WebSocket /ws/logs
 
@@ -125,8 +146,8 @@ Configuration via environment variables (most use `MODUL8R_` prefix):
 ### OpenAI settings
 
 - `OPENAI_API_KEY` - Your OpenAI API key (uses alias, no prefix)
-- `MODUL8R_OPENAI_DEFAULT_MODEL` - Default model (default: "gpt-4o")
-- `MODUL8R_OPENAI_MAX_TOKENS` - Max tokens per request (default: 4096)
+- `MODUL8R_OPENAI_DEFAULT_MODEL` - Default model (default: "gpt-4.1-nano")
+- `MODUL8R_OPENAI_MAX_TOKENS` - Max tokens per request (default: 32768)
 - `MODUL8R_OPENAI_TEMPERATURE` - Temperature setting (default: 0.1)
 - `MODUL8R_OPENAI_TIMEOUT` - Request timeout in seconds (default: 60.0)
 
@@ -147,11 +168,44 @@ Configuration via environment variables (most use `MODUL8R_` prefix):
 - `MODUL8R_LOG_CORRELATION_ID_HEADER` - Correlation ID header (default: "X-Correlation-ID")
 - `MODUL8R_ENABLE_LOG_CAPTURE` - Enable WebSocket log streaming (default: true)
 
+### Phase 1 Foundation Safeguards
+
+The application includes Phase 1 foundation safeguards with message throttling, enhanced memory management, and performance monitoring:
+
+#### Message Throttling Settings
+- `MODUL8R_THROTTLE_BATCH_INTERVAL` - Batch interval in seconds (default: 0.5, range: 0.1-5.0)
+- `MODUL8R_THROTTLE_MAX_BATCH_SIZE` - Max messages per batch (default: 100, range: 10-500)
+- `MODUL8R_THROTTLE_CIRCUIT_BREAKER_THRESHOLD` - Messages/sec threshold (default: 50.0, range: 10.0-200.0)
+- `MODUL8R_THROTTLE_CIRCUIT_BREAKER_WINDOW` - Window in seconds (default: 10.0, range: 5.0-60.0)
+- `MODUL8R_THROTTLE_CIRCUIT_BREAKER_RECOVERY_TIME` - Recovery time in seconds (default: 30.0, range: 10.0-300.0)
+
+#### Memory Management Settings
+- `MODUL8R_ENHANCED_LOG_CAPTURE_MAX_ENTRIES` - Max log entries (default: 1000, range: 100-5000)
+- `MODUL8R_ENHANCED_LOG_CAPTURE_MAX_AGE_SECONDS` - Max log age in seconds (default: 3600, range: 300-86400)
+- `MODUL8R_ENHANCED_LOG_CAPTURE_CLEANUP_INTERVAL` - Cleanup interval in seconds (default: 300, range: 60-1800)
+
+#### Performance Monitoring Settings
+- `MODUL8R_PERFORMANCE_MONITOR_MAX_LAG_MS` - Event loop lag threshold in ms (default: 40.0, range: 10.0-200.0)
+- `MODUL8R_PERFORMANCE_MONITOR_CHECK_INTERVAL` - Check interval in seconds (default: 1.0, range: 0.5-10.0)
+- `MODUL8R_PERFORMANCE_MONITOR_SEVERE_LAG_THRESHOLD_MULTIPLIER` - Severe lag multiplier (default: 3.0, range: 2.0-10.0)
+- `MODUL8R_PERFORMANCE_MONITOR_MAX_SEVERE_LAG_COUNT` - Max severe lag count (default: 5, range: 1-20)
+
+#### Feature Flags
+- `MODUL8R_ENABLE_MESSAGE_THROTTLING` - Enable message throttling (default: true)
+- `MODUL8R_ENABLE_ENHANCED_MEMORY_MANAGEMENT` - Enable enhanced memory management (default: true)
+- `MODUL8R_ENABLE_PERFORMANCE_MONITORING` - Enable performance monitoring (default: true)
+- `MODUL8R_ENABLE_PHASE1_STATUS_ENDPOINT` - Enable Phase 1 status endpoint (default: true)
+
 ### Server settings
 
 - `MODUL8R_SERVER_HOST` - Server host (default: "127.0.0.1")
 - `MODUL8R_SERVER_PORT` - Server port (default: 8000)
 - `MODUL8R_SERVER_RELOAD` - Enable auto-reload (default: false)
+
+### WebSocket settings
+
+- `MODUL8R_WEBSOCKET_TIMEOUT` - WebSocket timeout in seconds (default: 60.0)
+- `MODUL8R_WEBSOCKET_PING_INTERVAL` - Ping interval in seconds (default: 20.0)
 
 ## Development
 
@@ -166,8 +220,8 @@ uv run pytest tests/test_services.py    # Unit tests
 uv run pytest tests/test_main.py        # API tests
 uv run pytest tests/test_playwright.py  # Web UI tests
 
-# Validate logging configuration
-uv run python test_logging_fix.py
+# Run E2E tests (requires OPENAI_API_KEY)
+uv run pytest tests/test_e2e_playwright.py -m e2e
 ```
 
 ### Code quality
@@ -187,17 +241,19 @@ uv run mypy src/
 
 ```
 modul8r/
-├── src/modul8r/           # Main application code
+├── src/modul8r/          # Main application code
 │   ├── main.py           # FastAPI application and routes
 │   ├── services.py       # OpenAI and PDF processing services
 │   ├── config.py         # Configuration management
 │   ├── logging_config.py # Structured logging setup
-│   └── websocket_handlers.py # WebSocket connection management
-├── templates/            # Jinja2 HTML templates
-├── tests/               # Test suites
+│   ├── websocket_handlers.py  # WebSocket connection management
+│   └── performance_monitor.py # Phase 1 performance monitoring
+├── templates/           # Jinja2 HTML templates
+├── tests/               # Test suites (includes E2E with Playwright)
 ├── docs/                # Project documentation
+├── playwright-e2e/      # E2E test configuration and PDF files
 ├── pyproject.toml       # Project dependencies and configuration
-└── CLAUDE.md           # Development guidance
+└── CLAUDE.md            # Development guidance
 ```
 
 ## Architecture
@@ -208,8 +264,9 @@ modul8r/
 - AsyncOpenAI client with model detection and parameter handling
 - pdf2image for PDF to PNG conversion at configurable DPI
 - Python 3.13 TaskGroup for concurrent page processing
-- WebSocket server for log streaming
-- Structured logging with request correlation
+- WebSocket server for log streaming with Phase 1 foundation safeguards
+- Structured logging with request correlation and enhanced memory management
+- Phase 1 foundation safeguards including message throttling and performance monitoring
 
 ### Processing flow
 

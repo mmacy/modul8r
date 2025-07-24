@@ -1,0 +1,129 @@
+# JSON Schema for validating E2E test profiles
+# This schema ensures profile configurations are valid and complete
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "E2E Test Profiles Schema"
+description: "Schema for validating Playwright E2E test profile configurations"
+
+type: object
+required: ["profiles"]
+
+properties:
+  profiles:
+    type: object
+    description: "Dictionary of test profiles"
+    patternProperties:
+      "^[a-zA-Z0-9_]+$":
+        type: object
+        description: "Individual test profile configuration"
+        required: ["name", "pdf_file", "model", "detail_level", "concurrency"]
+        properties:
+          name:
+            type: string
+            description: "Human-readable name for the test profile"
+            minLength: 1
+          description:
+            type: string
+            description: "Description of what this profile tests"
+          pdf_file:
+            type: string
+            description: "PDF filename in playwright-e2e directory"
+            pattern: "^.+\\.pdf$"
+          model:
+            type: string
+            description: "OpenAI model to use for processing"
+            minLength: 1
+          detail_level:
+            type: string
+            enum: ["low", "high"]
+            description: "Image detail level for OpenAI processing"
+          concurrency:
+            type: integer
+            minimum: 1
+            maximum: 100
+            description: "Number of concurrent requests to process"
+          timeout_minutes:
+            type: integer
+            minimum: 1
+            maximum: 60
+            description: "Maximum time to wait for test completion (minutes)"
+          browser_overrides:
+            type: object
+            description: "Profile-specific browser setting overrides"
+            properties:
+              headless:
+                type: boolean
+              slow_mo:
+                type: integer
+                minimum: 0
+              timeout:
+                type: integer
+                minimum: 1000
+    additionalProperties: false
+    
+  browser_settings:
+    type: object
+    description: "Global browser automation settings"
+    properties:
+      headless:
+        type: boolean
+        description: "Run browser in headless mode"
+      slow_mo:
+        type: integer
+        minimum: 0
+        description: "Milliseconds to slow down browser actions"
+      viewport:
+        type: object
+        properties:
+          width:
+            type: integer
+            minimum: 800
+          height:
+            type: integer
+            minimum: 600
+        required: ["width", "height"]
+      timeout:
+        type: integer
+        minimum: 1000
+        description: "Default timeout for Playwright actions (milliseconds)"
+      screenshot_on_failure:
+        type: boolean
+        description: "Take screenshots when tests fail"
+      video_recording:
+        type: boolean
+        description: "Record video of test execution"
+    additionalProperties: false
+    
+  page_settings:
+    type: object
+    description: "Page interaction timing settings"
+    properties:
+      navigation_timeout:
+        type: integer
+        minimum: 1000
+      wait_for_selector_timeout:
+        type: integer
+        minimum: 1000
+      form_submission_timeout:
+        type: integer
+        minimum: 1000
+    additionalProperties: false
+    
+  server_settings:
+    type: object
+    description: "Test server configuration"
+    properties:
+      port:
+        type: integer
+        minimum: 1024
+        maximum: 65535
+      startup_timeout:
+        type: integer
+        minimum: 5
+        maximum: 120
+      log_level:
+        type: string
+        enum: ["debug", "info", "warning", "error"]
+    additionalProperties: false
+
+additionalProperties: false

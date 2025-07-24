@@ -1,0 +1,55 @@
+# Settings to use for Playwright E2E tests intended to test real-world application functionality without mocks. The tests
+# launch the application, specify the settings for one of the following profiles, then run the PDF-to-Markdown conversion.
+# These tests are to be run in an ad-hoc fashion rather than on every unit or integration test pass, typically initiated
+# or requested by the user.
+
+profiles:
+  quick_e2e:
+    name: "Quick E2E"
+    description: "Fast end-to-end test with minimal resources and fast non-reasoning model"
+    pdf_file: "quick.pdf"
+    model: "gpt-4.1-nano"
+    detail_level: "low"
+    concurrency: 32
+    timeout_minutes: 5
+
+  long_e2e:
+    name: "Long E2E"
+    description: "Comprehensive test with high-quality image processing and slower advanced reasoning model"
+    pdf_file: "long.pdf"
+    model: "o3"
+    detail_level: "high"
+    concurrency: 64
+    timeout_minutes: 15
+
+  stress_test:
+    name: "High-concurrency stress test"
+    description: "Test system limits with high concurrency"
+    pdf_file: "long.pdf"
+    model: "gpt-4.1-nano"
+    detail_level: "low"
+    concurrency: 100
+    timeout_minutes: 10
+
+# Browser automation settings
+browser_settings:
+  headless: false         # Set to false to watch the automation
+  slow_mo: 500            # Slow down actions for visibility (milliseconds)
+  viewport:
+    width: 1280
+    height: 720
+  timeout: 60000          # Default timeout for Playwright actions (milliseconds)
+  screenshot_on_failure: true
+  video_recording: false  # Set to true to record test execution
+
+# Page interaction settings
+page_settings:
+  navigation_timeout: 30000         # Timeout for page navigation
+  wait_for_selector_timeout: 10000  # Timeout for element selection
+  form_submission_timeout: 5000     # Timeout for form submissions
+
+# Server settings for E2E tests
+server_settings:
+  port: 8002               # Use different port to avoid conflicts
+  startup_timeout: 30      # Maximum seconds to wait for server startup
+  log_level: "info"        # Server log level during testing
