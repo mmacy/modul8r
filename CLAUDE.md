@@ -67,9 +67,97 @@ uv run python -m src.modul8r.main  # Start development server on http://127.0.0.
 uv run pytest  # Run all tests
 uv run pytest tests/test_services.py  # Run unit tests only
 uv run pytest tests/test_main.py  # Run API tests only
-uv run pytest tests/test_playwright.py  # Run web UI tests only
+uv run pytest tests/test_playwright.py  # Run web UI tests only (mocked)
 uv run python test_logging_fix.py  # Validate logging configuration
 ```
+
+### End-to-End Testing with Playwright
+The project includes comprehensive E2E tests that use Playwright to automate browser interactions and test the complete PDF-to-Markdown conversion workflow. These tests are configured via YAML profiles and run against the real application with actual OpenAI API calls.
+
+#### E2E Test Configuration
+E2E tests are configured via `playwright-e2e/profiles.yaml`. Each profile defines:
+- PDF file to test (must exist in `playwright-e2e/` directory)
+- OpenAI model to use (any available model - no hardcoded restrictions)
+- Processing parameters (detail level, concurrency)
+- Timeout settings and browser configuration
+
+#### Default E2E Profiles
+- **quick_e2e**: Fast test using `gpt-4.1-nano` model with low detail and 32 concurrency
+- **long_e2e**: Comprehensive test using `o3` model with high detail and 64 concurrency
+- **gpt4_turbo_test**: Example profile for testing GPT-4 Turbo
+- **stress_test**: High concurrency test with 100 concurrent requests
+
+#### Running E2E Tests
+```bash
+# List available E2E profiles
+python -c "from tests.e2e_config import E2EConfig; print(list(E2EConfig().get_profiles().keys()))"
+
+# Run specific E2E profile
+uv run pytest tests/test_e2e_playwright.py::TestE2EProfiles::test_e2e_profile_browser_automation[quick_e2e]
+uv run pytest tests/test_e2e_playwright.py::TestE2EProfiles::test_e2e_profile_browser_automation[long_e2e]
+
+# Run all E2E profile tests
+uv run pytest tests/test_e2e_playwright.py::TestE2EProfiles -m e2e
+
+# Run E2E infrastructure tests
+uv run pytest tests/test_e2e_playwright.py::TestE2EInfrastructure
+
+# Run all E2E tests (infrastructure + profiles)
+uv run pytest tests/test_e2e_playwright.py -m slow
+
+# Run with visible browser for debugging
+PLAYWRIGHT_HEADLESS=false uv run pytest tests/test_e2e_playwright.py::TestE2EProfiles::test_e2e_profile_browser_automation[quick_e2e] -s
+```
+
+#### Adding New E2E Profiles
+SDETs can add new test profiles by editing `playwright-e2e/profiles.yaml`:
+
+```yaml
+custom_profile:
+  name: "Custom Test Profile"
+  description: "Testing specific scenario"
+  pdf_file: "custom.pdf"  # Must exist in playwright-e2e/
+  model: "gpt-4o-mini"    # Any OpenAI model
+  detail_level: "high"    # "low" or "high"
+  concurrency: 8          # 1-100
+  timeout_minutes: 12     # Max wait time
+  
+  # Optional browser overrides
+  browser_overrides:
+    headless: true        # Override global browser settings
+    slow_mo: 0           # Run at full speed
+```
+
+#### Validating E2E Configuration
+```bash
+# Validate all profiles
+python -m tests.e2e_config --validate
+
+# Check specific profile
+python -m tests.e2e_config --profile quick_e2e
+
+# Test profile configuration without running full test
+python -m tests.e2e_config --profile custom_profile --dry-run
+```
+
+#### E2E Test Requirements
+- `OPENAI_API_KEY` environment variable must be set
+- PDF files must exist in `playwright-e2e/` directory
+- System dependencies: poppler-utils (for PDF processing)
+- Browser dependencies: `playwright install` must be run
+
+#### E2E Test Features
+The E2E tests use Playwright to automate:
+- **Browser launch and navigation** to the web application
+- **Dynamic model loading** via real OpenAI API calls
+- **Form interactions** (file uploads, dropdowns, sliders, checkboxes)
+- **WebSocket log monitoring** in real-time during processing
+- **Conversion progress tracking** through UI state changes
+- **Result verification** and content validation
+- **Download functionality** testing with actual file generation
+- **Error handling** and timeout scenarios
+
+These tests surface issues in the core library that might be triggered by specific models or configurations, ensuring robust operation across all supported OpenAI models.
 
 ### Code Quality
 ```bash

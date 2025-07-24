@@ -5,16 +5,13 @@ from typing import Optional
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        env_prefix="MODUL8R_"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, env_prefix="MODUL8R_"
     )
 
     # OpenAI Configuration
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
     openai_default_model: str = "gpt-4.1-nano"  # Default model for image processing
-    openai_max_tokens: int = 4096
+    openai_max_tokens: int = 100000
     openai_temperature: float = 0.1
     openai_timeout: float = 60.0
 
