@@ -165,8 +165,23 @@ uv run ruff format  # Format code
 uv run mypy src/  # Type checking
 ```
 
+### Pytest Markers
+The project uses specific pytest markers for test organization:
+- `slow`: Tests that may take several minutes (e.g., E2E with real API calls)
+- `integration`: Integration tests
+- `unit`: Unit tests
+- `phase1`: Phase 1 foundation safeguards
+- `e2e`: End-to-end browser automation tests
+
+Run specific test categories with: `uv run pytest -m unit` or `uv run pytest -m "not slow"`
+
 ### Environment Setup
-The application requires an OpenAI API key. Set the `OPENAI_API_KEY` environment variable or pass it to the OpenAIService constructor.
+The application requires an OpenAI API key. Create a `.env` file in the project root with:
+```bash
+OPENAI_API_KEY="your-api-key-here"
+```
+
+Alternatively, set the `OPENAI_API_KEY` environment variable or pass it to the OpenAIService constructor.
 
 ### System Dependencies
 - poppler-utils (for pdf2image library)
@@ -221,3 +236,11 @@ MODUL8R_ENABLE_LOG_CAPTURE=true  # Enable WebSocket log streaming
 ## Development Notes
 
 This project prioritizes fidelity and accuracy in converting scanned tabletop RPG documents to clean, structured Markdown format. The modern async architecture ensures high performance while maintaining reliability through comprehensive error handling and partial result recovery.
+
+### Markdown Style Guidelines
+All Markdown output follows the project's style guide (`docs/mdstyle.md`):
+
+- Headings use sentence case and are surrounded by blank lines
+- Unordered lists use hyphens for list markers
+- Code blocks are surrounded by blank lines
+- No horizontal rule separators (---) are used

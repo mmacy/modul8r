@@ -1,13 +1,15 @@
 import pytest
+import pytest_asyncio
 from playwright.async_api import async_playwright, Page, Browser
 from fastapi.testclient import TestClient
 import asyncio
 import threading
 import uvicorn
 import time
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, Mock
 
-from src.modul8r.main import app
+from src.modul8r.main import app, get_openai_service, get_pdf_service
+from src.modul8r.services import OpenAIService, PDFService
 
 
 @pytest.fixture(scope="session")
@@ -18,32 +20,40 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def server():
     """Start the FastAPI server for testing."""
-    # Mock the services to avoid requiring real API keys
-    with patch("src.modul8r.main.openai_service") as mock_openai:
-        mock_openai.get_vision_models = AsyncMock(return_value=["gpt-4o", "gpt-4o-mini"])
-        mock_openai.process_image = AsyncMock(return_value="# Test Document\n\nThis is a test conversion.")
+    # Create mock services
+    mock_openai = Mock(spec=OpenAIService)
+    mock_openai.get_vision_models = AsyncMock(return_value=["gpt-4o", "gpt-4o-mini"])
+    mock_openai.process_images_batch = AsyncMock(return_value=["# Test Document\n\nThis is a test conversion."])
+    
+    mock_pdf = Mock(spec=PDFService)
+    mock_pdf.pdf_to_images.return_value = [b"fake_image_data"]
+    mock_pdf.images_to_base64.return_value = ["base64_encoded_image"]
+    
+    # Override dependencies
+    app.dependency_overrides[get_openai_service] = lambda: mock_openai
+    app.dependency_overrides[get_pdf_service] = lambda: mock_pdf
+    
+    try:
+        # Start server in a separate thread
+        def run_server():
+            uvicorn.run(app, host="127.0.0.1", port=8001, log_level="error")
 
-        with patch("src.modul8r.main.pdf_service") as mock_pdf:
-            mock_pdf.pdf_to_images.return_value = [b"fake_image_data"]
-            mock_pdf.images_to_base64.return_value = ["base64_encoded_image"]
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
 
-            # Start server in a separate thread
-            def run_server():
-                uvicorn.run(app, host="127.0.0.1", port=8001, log_level="error")
+        # Wait for server to start
+        time.sleep(2)
 
-            server_thread = threading.Thread(target=run_server, daemon=True)
-            server_thread.start()
-
-            # Wait for server to start
-            time.sleep(2)
-
-            yield "http://127.0.0.1:8001"
+        yield "http://127.0.0.1:8001"
+    finally:
+        # Clean up
+        app.dependency_overrides.clear()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def browser():
     """Create a browser instance."""
     async with async_playwright() as p:
@@ -52,7 +62,7 @@ async def browser():
         await browser.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def page(browser: Browser):
     """Create a page instance."""
     page = await browser.new_page()
