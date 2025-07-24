@@ -373,13 +373,13 @@
         }
 
         @keyframes fadeInUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(20px); 
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
 
@@ -965,7 +965,7 @@
                     </button>
                     <div>
                         <h1 class="page-title" id="pageTitle">Dashboard</h1>
-                        <p class="page-subtitle" id="pageSubtitle">Welcome to your PDF conversion workspace</p>
+                        <p class="page-subtitle" id="pageSubtitle">Welcome to your TTRPG PDF conversion workspace</p>
                     </div>
                 </div>
                 <div class="topbar-right">
@@ -1018,7 +1018,7 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">⚡</span>
-                                    Avg. processing time
+                                    Average conversion time
                                 </div>
                             </div>
                             <div class="widget-body">
@@ -1106,7 +1106,7 @@
                                     Concurrency level
                                 </label>
                                 <div class="range-group">
-                                    <input type="range" id="concurrency" name="concurrency" class="range-input" 
+                                    <input type="range" id="concurrency" name="concurrency" class="range-input"
                                            min="1" max="100" value="64"
                                            oninput="document.getElementById('concurrencyValue').textContent = this.value">
                                     <span id="concurrencyValue" class="range-value">64</span>
@@ -1137,7 +1137,7 @@
                             <h3>No conversion history</h3>
                             <p>Your previous conversions will be stored here for easy access and re-download.</p>
                             <p style="font-size: 0.875rem; margin-top: 1rem; opacity: 0.7;">
-                                <em>History persistence feature coming in a future update!</em>
+                                <em>History persistence feature not yet implemented</em>
                             </p>
                         </div>
                     </div>
@@ -1203,7 +1203,7 @@
                         <div class="form-group">
                             <label class="form-label" for="defaultConcurrency">Default concurrency</label>
                             <div class="range-group">
-                                <input type="range" id="defaultConcurrency" class="range-input" 
+                                <input type="range" id="defaultConcurrency" class="range-input"
                                        min="1" max="100" value="64"
                                        oninput="document.getElementById('defaultConcurrencyValue').textContent = this.value">
                                 <span id="defaultConcurrencyValue" class="range-value">64</span>
@@ -1310,8 +1310,8 @@
 
             // Update page title
             const titles = {
-                dashboard: { title: 'Dashboard', subtitle: 'Welcome to your PDF conversion workspace' },
-                convert: { title: 'Convert PDFs', subtitle: 'Transform your documents into clean Markdown' },
+                dashboard: { title: 'Dashboard', subtitle: 'Welcome to your TTRPG PDF conversion workspace' },
+                convert: { title: 'Convert PDFs', subtitle: 'Convert your TTRPG PDFs to Markdown' },
                 history: { title: 'Conversion history', subtitle: 'Review and manage your past conversions' },
                 logs: { title: 'System logs', subtitle: 'Monitor real-time application activity' },
                 settings: { title: 'Settings', subtitle: 'Customize your modul8r experience' }
@@ -1345,7 +1345,7 @@
             dropZone.addEventListener('drop', function(e) {
                 e.preventDefault();
                 dropZone.classList.remove('dragover');
-                
+
                 const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
                 if (files.length > 0) {
                     fileInput.files = e.dataTransfer.files;
@@ -1409,7 +1409,7 @@
                 const models = await response.json();
                 const select = document.getElementById('model');
                 const defaultSelect = document.getElementById('defaultModel');
-                
+
                 select.innerHTML = '';
                 defaultSelect.innerHTML = '<option value="">Use first available model</option>';
 
@@ -1444,7 +1444,7 @@
             btn.disabled = true;
             btn.innerHTML = '⏳ Converting...';
             outputArea.style.display = 'block';
-            results.innerHTML = '<div class="loading">🔄 Processing your PDFs...</div>';
+            results.innerHTML = '<div class="loading">🔄 Working...</div>';
 
             // Add activity to feed
             addActivityItem('info', 'Conversion started', 'Processing files...');
@@ -1462,7 +1462,7 @@
                 const data = await response.json();
                 displayResults(data);
                 addActivityItem('success', 'Conversion completed', `Successfully processed ${Object.keys(data).length} files`);
-                
+
                 // Show notification
                 if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification('Conversion complete', {
@@ -1534,7 +1534,7 @@
 
         function addActivityItem(type, title, description) {
             const feed = document.getElementById('activityFeed');
-            
+
             // Create activity element
             const activity = document.createElement('div');
             activity.className = 'activity-item';
@@ -1565,7 +1565,7 @@
         function toggleLogViewer(show) {
             const logViewer = document.getElementById('logViewer');
             const activityDot = document.getElementById('logActivityDot');
-            
+
             if (show) {
                 logViewer.style.display = 'block';
                 connectWebSocket();
@@ -1714,7 +1714,7 @@
             const origText = btn.textContent;
             btn.textContent = '✅ Settings saved!';
             btn.style.background = 'var(--success)';
-            
+
             setTimeout(() => {
                 btn.textContent = origText;
                 btn.style.background = '';
