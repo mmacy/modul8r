@@ -941,7 +941,7 @@
                     <div class="nav-section-title">System</div>
                     <a href="#" class="nav-link" data-section="logs">
                         <span class="nav-icon">📋</span>
-                        <span class="nav-text">Live Logs</span>
+                        <span class="nav-text">Live logs</span>
                         <div class="activity-dot" id="logActivityDot" style="display: none;"></div>
                     </a>
                     <a href="#" class="nav-link" data-section="settings">
@@ -988,12 +988,12 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">📈</span>
-                                    Total Conversions
+                                    Total conversions
                                 </div>
                             </div>
                             <div class="widget-body">
                                 <div class="stat-value" id="totalConversions">0</div>
-                                <div class="stat-label">Files Processed</div>
+                                <div class="stat-label">Files processed</div>
                                 <div class="stat-change positive">+0% from last month</div>
                             </div>
                         </div>
@@ -1002,12 +1002,12 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">✅</span>
-                                    Success Rate
+                                    Success rate
                                 </div>
                             </div>
                             <div class="widget-body">
                                 <div class="stat-value" id="successRate">100%</div>
-                                <div class="stat-label">Completion Rate</div>
+                                <div class="stat-label">Completion rate</div>
                                 <div class="progress-bar">
                                     <div class="progress-fill" style="width: 100%"></div>
                                 </div>
@@ -1018,12 +1018,12 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">⚡</span>
-                                    Avg. Processing Time
+                                    Avg. processing time
                                 </div>
                             </div>
                             <div class="widget-body">
                                 <div class="stat-value" id="avgProcessingTime">--</div>
-                                <div class="stat-label">Per File</div>
+                                <div class="stat-label">Per file</div>
                                 <div class="stat-change">No data available</div>
                             </div>
                         </div>
@@ -1032,12 +1032,12 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">🔥</span>
-                                    System Status
+                                    System status
                                 </div>
                             </div>
                             <div class="widget-body">
                                 <div class="stat-value" style="color: var(--success);">Online</div>
-                                <div class="stat-label">All Systems Operational</div>
+                                <div class="stat-label">All systems operational</div>
                                 <div class="stat-change positive">99.9% uptime</div>
                             </div>
                         </div>
@@ -1048,7 +1048,7 @@
                             <div class="widget-header">
                                 <div class="widget-title">
                                     <span class="widget-icon">📊</span>
-                                    Recent Activity
+                                    Recent activity
                                 </div>
                             </div>
                             <div class="widget-body">
@@ -1073,7 +1073,7 @@
 
                         <form id="convertForm" enctype="multipart/form-data">
                             <div class="form-group">
-                                <label class="form-label" for="files">Select PDF Files</label>
+                                <label class="form-label" for="files">Select PDF files</label>
                                 <div class="drop-zone" id="dropZone" onclick="document.getElementById('files').click()">
                                     <div class="drop-zone-icon">📁</div>
                                     <div class="drop-zone-text">Drop PDF files here or click to browse</div>
@@ -1086,24 +1086,24 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
-                                    <label class="form-label" for="model">AI Model</label>
+                                    <label class="form-label" for="model">AI model</label>
                                     <select id="model" name="model" class="form-select">
                                         <option value="">Loading models...</option>
                                     </select>
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="form-label" for="detail">Detail Level</label>
+                                    <label class="form-label" for="detail">Detail level</label>
                                     <select id="detail" name="detail" class="form-select">
-                                        <option value="high" selected>High Quality</option>
-                                        <option value="low">Fast Processing</option>
+                                        <option value="high" selected>High quality</option>
+                                        <option value="low">Fast processing</option>
                                     </select>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label" for="concurrency">
-                                    Concurrency Level
+                                    Concurrency level
                                 </label>
                                 <div class="range-group">
                                     <input type="range" id="concurrency" name="concurrency" class="range-input" 
@@ -1115,12 +1115,12 @@
                             </div>
 
                             <button type="submit" id="convertBtn" class="btn btn-primary btn-full">
-                                🚀 Start Conversion
+                                🚀 Start conversion
                             </button>
                         </form>
 
                         <div id="outputArea" class="results-section" style="display: none;">
-                            <h3>Conversion Results</h3>
+                            <h3>Conversion results</h3>
                             <div id="results"></div>
                         </div>
                     </div>
@@ -1131,7 +1131,7 @@
                     <div class="form-section">
                         <h2 class="form-title">
                             <span>📝</span>
-                            Conversion History
+                            Conversion history
                         </h2>
                         <div class="empty-state">
                             <h3>No conversion history</h3>
@@ -1148,7 +1148,7 @@
                     <div class="form-section">
                         <h2 class="form-title">
                             <span>📋</span>
-                            System Logs
+                            System logs
                         </h2>
 
                         <div class="form-group">
@@ -1160,15 +1160,15 @@
 
                         <div id="logViewer" class="log-viewer" style="display: none;">
                             <div class="log-header">
-                                <span>🔴 Live Activity Monitor</span>
+                                <span>🔴 Live activity monitor</span>
                                 <div>
                                     <span id="connectionStatus" class="connection-status disconnected">Disconnected</span>
                                 </div>
                             </div>
                             <div id="logContent" class="log-content"></div>
                             <div class="log-controls">
-                                <button type="button" class="btn btn-outline" onclick="clearLogs()">Clear Logs</button>
-                                <button type="button" class="btn btn-outline" onclick="scrollToBottom()">Scroll to Bottom</button>
+                                <button type="button" class="btn btn-outline" onclick="clearLogs()">Clear logs</button>
+                                <button type="button" class="btn btn-outline" onclick="scrollToBottom()">Scroll to bottom</button>
                                 <label style="margin-left: auto; display: flex; align-items: center; gap: 0.5rem;">
                                     <input type="checkbox" id="autoScroll" checked> Auto-scroll
                                 </label>
@@ -1182,11 +1182,11 @@
                     <div class="form-section">
                         <h2 class="form-title">
                             <span>⚙️</span>
-                            Application Settings
+                            Application settings
                         </h2>
 
                         <div class="form-group">
-                            <label class="form-label">Theme Preference</label>
+                            <label class="form-label">Theme preference</label>
                             <label style="display: flex; align-items: center; gap: 0.5rem;">
                                 <input type="checkbox" id="darkModeToggle" onchange="toggleThemeFromSettings()">
                                 Enable dark mode
@@ -1194,14 +1194,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="defaultModel">Default AI Model</label>
+                            <label class="form-label" for="defaultModel">Default AI model</label>
                             <select id="defaultModel" class="form-select">
                                 <option value="">Use first available model</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="defaultConcurrency">Default Concurrency</label>
+                            <label class="form-label" for="defaultConcurrency">Default concurrency</label>
                             <div class="range-group">
                                 <input type="range" id="defaultConcurrency" class="range-input" 
                                        min="1" max="100" value="64"
@@ -1224,7 +1224,7 @@
                             </label>
                         </div>
 
-                        <button type="button" class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">💾 Save settings</button>
                     </div>
                 </section>
             </div>
@@ -1312,8 +1312,8 @@
             const titles = {
                 dashboard: { title: 'Dashboard', subtitle: 'Welcome to your PDF conversion workspace' },
                 convert: { title: 'Convert PDFs', subtitle: 'Transform your documents into clean Markdown' },
-                history: { title: 'Conversion History', subtitle: 'Review and manage your past conversions' },
-                logs: { title: 'System Logs', subtitle: 'Monitor real-time application activity' },
+                history: { title: 'Conversion history', subtitle: 'Review and manage your past conversions' },
+                logs: { title: 'System logs', subtitle: 'Monitor real-time application activity' },
                 settings: { title: 'Settings', subtitle: 'Customize your modul8r experience' }
             };
 
@@ -1465,7 +1465,7 @@
                 
                 // Show notification
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Conversion Complete', {
+                    new Notification('Conversion complete', {
                         body: `Successfully processed ${Object.keys(data).length} files`,
                         icon: '/favicon.ico'
                     });
@@ -1476,7 +1476,7 @@
                 addActivityItem('error', 'Conversion failed', error.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '🚀 Start Conversion';
+                btn.innerHTML = '🚀 Start conversion';
             }
         }
 
@@ -1712,7 +1712,7 @@
             // Show success feedback
             const btn = event.target;
             const origText = btn.textContent;
-            btn.textContent = '✅ Settings Saved!';
+            btn.textContent = '✅ Settings saved!';
             btn.style.background = 'var(--success)';
             
             setTimeout(() => {
