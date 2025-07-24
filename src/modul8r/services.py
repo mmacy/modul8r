@@ -52,7 +52,7 @@ class OpenAIService:
         """Process a single image with retry logic and rate limiting."""
         system_prompt = (
             "You are an expert at converting text content from scanned tabletop RPG adventure "
-            "modules and other game content to clean Markdown format. Your task is to:"
+            "modules and other game books to clean Markdown format. Your task is to:"
             "\n\n"
             "1. Accurately transcribe all text content from the image\n"
             "2. Preserve the document structure using appropriate Markdown formatting\n"
