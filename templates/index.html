@@ -3,290 +3,1426 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>modul8r - PDF to Markdown Converter</title>
+    <title>modul8r - Dashboard</title>
     <style>
+        :root {
+            /* Light theme variables */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-accent: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --border-color: #e2e8f0;
+            --border-light: #f1f5f9;
+            --accent-primary: #3b82f6;
+            --accent-primary-hover: #2563eb;
+            --accent-secondary: #10b981;
+            --accent-secondary-hover: #059669;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #06b6d4;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+            --blur-sm: blur(4px);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme variables */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-accent: #475569;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --text-light: #64748b;
+            --border-color: #334155;
+            --border-light: #475569;
+            --accent-primary: #3b82f6;
+            --accent-primary-hover: #60a5fa;
+            --accent-secondary: #10b981;
+            --accent-secondary-hover: #34d399;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #06b6d4;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 10px 10px -5px rgb(0 0 0 / 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+            overflow-x: hidden;
         }
-        .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
         }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
         }
-        .form-group {
-            margin-bottom: 20px;
+
+        .sidebar.collapsed {
+            width: 80px;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
         }
-        input, select, button {
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        input[type="file"] {
-            width: 100%;
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: opacity 0.3s ease;
         }
-        select {
-            width: 100%;
+
+        .sidebar.collapsed .sidebar-brand .brand-text {
+            display: none;
         }
-        button {
-            background-color: #007bff;
+
+        .brand-icon {
+            width: 2rem;
+            height: 2rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
+            font-weight: 700;
+            font-size: 1.125rem;
+            min-width: 2rem;
+        }
+
+        .brand-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .sidebar-toggle {
+            background: none;
             border: none;
+            color: var(--text-muted);
             cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .sidebar.collapsed .sidebar-toggle {
+            margin: 0 auto;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            padding: 0 1.5rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .nav-section-title {
+            opacity: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-left-color: var(--accent-primary);
+        }
+
+        .nav-link.active {
+            background: rgb(59 130 246 / 0.1);
+            color: var(--accent-primary);
+            border-left-color: var(--accent-primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            min-width: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .nav-text {
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+
+        /* Activity indicators */
+        .nav-link .activity-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-secondary);
+            border-radius: 50%;
+            margin-left: auto;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .activity-dot {
+            display: none;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            transition: margin-left 0.3s ease;
+            min-height: 100vh;
+            background: var(--bg-secondary);
+        }
+
+        .sidebar.collapsed + .main-content {
+            margin-left: 80px;
+        }
+
+        /* Top bar */
+        .topbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .notification-indicator {
+            position: relative;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+        }
+
+        .notification-indicator:hover {
+            background: var(--bg-accent);
+            color: var(--text-primary);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--accent-danger);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-accent);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* Content area */
+        .content-area {
+            padding: 2rem;
+        }
+
+        .content-section {
+            display: none;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        /* Widget system */
+        .widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .widget {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .widget:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        .widget-header {
+            padding: 1.5rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: between;
+        }
+
+        .widget-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .widget-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: var(--accent-primary);
+        }
+
+        .widget-body {
+            padding: 1.5rem;
+        }
+
+        /* Stats widget */
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--error);
+        }
+
+        /* Progress widget */
+        .progress-bar {
             width: 100%;
-            font-size: 18px;
-            margin-top: 10px;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
         }
-        button:hover {
-            background-color: #0056b3;
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 4px;
+            transition: width 0.5s ease;
         }
-        button:disabled {
-            background-color: #ccc;
+
+        /* Activity feed */
+        .activity-feed {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            min-width: 2rem;
+        }
+
+        .activity-icon.success {
+            background: rgb(34 197 94 / 0.1);
+            color: var(--success);
+        }
+
+        .activity-icon.error {
+            background: rgb(239 68 68 / 0.1);
+            color: var(--error);
+        }
+
+        .activity-icon.info {
+            background: rgb(6 182 212 / 0.1);
+            color: var(--info);
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-text {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Forms */
+        .form-section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+            background: var(--bg-primary);
+        }
+
+        .form-help {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Drag and drop area */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: var(--bg-secondary);
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: var(--accent-primary);
+            background: rgb(59 130 246 / 0.05);
+        }
+
+        .drop-zone-icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .drop-zone-text {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone-subtext {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            min-height: 2.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-primary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--accent-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--accent-secondary-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--accent-primary);
+            border: 1px solid var(--accent-primary);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
-        .output-area {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            min-height: 200px;
+
+        .btn-full {
+            width: 100%;
         }
+
+        /* Range input */
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .range-input {
+            flex: 1;
+        }
+
+        .range-value {
+            min-width: 3rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--accent-primary);
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+        }
+
+        /* Results area */
+        .results-section {
+            margin-top: 2rem;
+        }
+
         .file-result {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: white;
-            border-left: 4px solid #007bff;
-            border-radius: 4px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            margin-bottom: 1rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
         }
-        .file-result h3 {
-            margin-top: 0;
-            color: #007bff;
+
+        .file-result-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
         }
-        .download-btn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            text-decoration: none;
-            display: inline-flex;
+
+        .file-result-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 0.5rem;
         }
-        .download-btn:hover {
-            background-color: #218838;
-        }
-        .markdown-content {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            font-family: monospace;
+
+        .file-result-content {
+            padding: 1.5rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.875rem;
+            background: var(--bg-secondary);
             white-space: pre-wrap;
             max-height: 400px;
             overflow-y: auto;
+            line-height: 1.6;
+            color: var(--text-secondary);
         }
-        .loading {
-            text-align: center;
-            color: #666;
-            font-style: italic;
-        }
-        .error {
-            color: #dc3545;
-            padding: 10px;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            border-radius: 4px;
-        }
+
+        /* Log viewer */
         .log-viewer {
-            display: none;
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f8f9fa;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
         }
+
         .log-header {
-            padding: 10px 15px;
-            background-color: #e9ecef;
-            border-bottom: 1px solid #ddd;
-            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
         }
+
         .log-content {
-            height: 300px;
+            height: 400px;
             overflow-y: auto;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            background-color: #1e1e1e;
-            color: #d4d4d4;
+            padding: 1rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.8rem;
+            background: var(--bg-secondary);
+            line-height: 1.5;
         }
+
         .log-entry {
-            margin-bottom: 5px;
+            margin-bottom: 0.25rem;
             word-wrap: break-word;
         }
-        .log-entry.info {
-            color: #4da6ff;
-        }
-        .log-entry.warning {
-            color: #ffcc00;
-        }
-        .log-entry.error {
-            color: #ff6b6b;
-        }
+
+        .log-entry.info { color: var(--info); }
+        .log-entry.warning { color: var(--warning); }
+        .log-entry.error { color: var(--error); }
+        .log-entry.success { color: var(--success); }
+
         .log-controls {
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-top: 1px solid #ddd;
             display: flex;
-            gap: 10px;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
         }
-        .log-controls button {
-            padding: 5px 10px;
-            font-size: 12px;
-            width: auto;
-        }
+
         .connection-status {
-            font-size: 12px;
-            padding: 2px 6px;
-            border-radius: 3px;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: auto;
         }
+
         .connection-status.connected {
-            background-color: #d4edda;
-            color: #155724;
+            background: rgb(34 197 94 / 0.1);
+            color: var(--success);
         }
+
         .connection-status.disconnected {
-            background-color: #f8d7da;
-            color: #721c24;
+            background: rgb(239 68 68 / 0.1);
+            color: var(--error);
         }
-        input[type="range"] {
+
+        /* Mobile responsive */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            margin: 5px 0;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
         }
-        input[type="checkbox"] {
-            width: auto;
-            margin-right: 8px;
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.mobile-visible {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-overlay.active {
+                display: block;
+            }
+
+            .topbar {
+                padding: 1rem;
+            }
+
+            .content-area {
+                padding: 1rem;
+            }
+
+            .widgets-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-section {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Utility classes */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .error {
+            color: var(--error);
+            background: rgb(239 68 68 / 0.1);
+            border: 1px solid rgb(239 68 68 / 0.2);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+
+        .success {
+            color: var(--success);
+            background: rgb(34 197 94 / 0.1);
+            border: 1px solid rgb(34 197 94 / 0.2);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state h3 {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>modul8r</h1>
-        <p style="text-align: center; color: #666; margin-bottom: 30px;">
-            Convert TTRPG adventure module PDFs to Markdown
-        </p>
-
-        <form id="convertForm" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="files">Select PDF files:</label>
-                <input type="file" id="files" name="files" multiple accept=".pdf" required>
-                <small style="color: #666;">You can select multiple PDF files for batch processing</small>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-brand">
+                    <div class="brand-icon">M</div>
+                    <span class="brand-text">modul8r</span>
+                </a>
+                <button type="button" class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+                    <span>⟪</span>
+                </button>
             </div>
 
-            <div class="form-group">
-                <label for="model">Model:</label>
-                <select id="model" name="model">
-                    <option value="">Loading models...</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="detail">Image detail level:</label>
-                <select id="detail" name="detail">
-                    <option value="high" selected>High</option>
-                    <option value="low">Low</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="concurrency">Concurrent requests:</label>
-                <input type="range" id="concurrency" name="concurrency" min="1" max="100" value="64"
-                       oninput="document.getElementById('concurrencyValue').textContent = this.value">
-                <span id="concurrencyValue">64</span>
-                <small style="color: #666;">Number of images processed simultaneously (1-100)</small>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="showLogs" onchange="toggleLogViewer(this.checked)">
-                    Show logs
-                </label>
-            </div>
-
-            <button type="submit" id="convertBtn">Convert</button>
-        </form>
-
-        <div id="logViewer" class="log-viewer">
-            <div class="log-header">
-                <span>Real-time logs</span>
-                <div>
-                    <span id="connectionStatus" class="connection-status disconnected">Disconnected</span>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="#" class="nav-link active" data-section="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-link" data-section="convert">
+                        <span class="nav-icon">🔄</span>
+                        <span class="nav-text">Convert PDFs</span>
+                    </a>
+                    <a href="#" class="nav-link" data-section="history">
+                        <span class="nav-icon">📝</span>
+                        <span class="nav-text">History</span>
+                    </a>
                 </div>
-            </div>
-            <div id="logContent" class="log-content"></div>
-            <div class="log-controls">
-                <button onclick="clearLogs()">Clear logs</button>
-                <button onclick="scrollToBottom()">Scroll to bottom</button>
-                <label>
-                    <input type="checkbox" id="autoScroll" checked> Auto-scroll
-                </label>
-            </div>
-        </div>
 
-        <div id="outputArea" class="output-area" style="display: none;">
-            <h2>Results</h2>
-            <div id="results"></div>
-        </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <a href="#" class="nav-link" data-section="logs">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">Live Logs</span>
+                        <div class="activity-dot" id="logActivityDot" style="display: none;"></div>
+                    </a>
+                    <a href="#" class="nav-link" data-section="settings">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-text">Settings</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Mobile overlay -->
+        <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileSidebar()"></div>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <!-- Top bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle mobile-only" onclick="openMobileSidebar()" style="display: none;">
+                        ☰
+                    </button>
+                    <div>
+                        <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                        <p class="page-subtitle" id="pageSubtitle">Welcome to your PDF conversion workspace</p>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <div class="notification-indicator" onclick="showNotifications()">
+                        📢
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">3</span>
+                    </div>
+                    <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content area -->
+            <div class="content-area">
+                <!-- Dashboard Section -->
+                <section class="content-section active" id="dashboard-section">
+                    <div class="widgets-grid">
+                        <div class="widget">
+                            <div class="widget-header">
+                                <div class="widget-title">
+                                    <span class="widget-icon">📈</span>
+                                    Total Conversions
+                                </div>
+                            </div>
+                            <div class="widget-body">
+                                <div class="stat-value" id="totalConversions">0</div>
+                                <div class="stat-label">Files Processed</div>
+                                <div class="stat-change positive">+0% from last month</div>
+                            </div>
+                        </div>
+
+                        <div class="widget">
+                            <div class="widget-header">
+                                <div class="widget-title">
+                                    <span class="widget-icon">✅</span>
+                                    Success Rate
+                                </div>
+                            </div>
+                            <div class="widget-body">
+                                <div class="stat-value" id="successRate">100%</div>
+                                <div class="stat-label">Completion Rate</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="widget">
+                            <div class="widget-header">
+                                <div class="widget-title">
+                                    <span class="widget-icon">⚡</span>
+                                    Avg. Processing Time
+                                </div>
+                            </div>
+                            <div class="widget-body">
+                                <div class="stat-value" id="avgProcessingTime">--</div>
+                                <div class="stat-label">Per File</div>
+                                <div class="stat-change">No data available</div>
+                            </div>
+                        </div>
+
+                        <div class="widget">
+                            <div class="widget-header">
+                                <div class="widget-title">
+                                    <span class="widget-icon">🔥</span>
+                                    System Status
+                                </div>
+                            </div>
+                            <div class="widget-body">
+                                <div class="stat-value" style="color: var(--success);">Online</div>
+                                <div class="stat-label">All Systems Operational</div>
+                                <div class="stat-change positive">99.9% uptime</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widgets-grid">
+                        <div class="widget" style="grid-column: 1 / -1;">
+                            <div class="widget-header">
+                                <div class="widget-title">
+                                    <span class="widget-icon">📊</span>
+                                    Recent Activity
+                                </div>
+                            </div>
+                            <div class="widget-body">
+                                <div class="activity-feed" id="activityFeed">
+                                    <div class="empty-state">
+                                        <h3>No recent activity</h3>
+                                        <p>Your conversion activity will appear here once you start processing files.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Convert Section -->
+                <section class="content-section" id="convert-section">
+                    <div class="form-section">
+                        <h2 class="form-title">
+                            <span>🔄</span>
+                            Convert PDFs to Markdown
+                        </h2>
+
+                        <form id="convertForm" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label class="form-label" for="files">Select PDF Files</label>
+                                <div class="drop-zone" id="dropZone" onclick="document.getElementById('files').click()">
+                                    <div class="drop-zone-icon">📁</div>
+                                    <div class="drop-zone-text">Drop PDF files here or click to browse</div>
+                                    <div class="drop-zone-subtext">Supports multiple files for batch processing</div>
+                                </div>
+                                <input type="file" id="files" name="files" class="form-input" multiple accept=".pdf" required style="display: none;">
+                                <div class="form-help">Selected files will appear below</div>
+                                <div id="selectedFiles" style="margin-top: 1rem;"></div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-label" for="model">AI Model</label>
+                                    <select id="model" name="model" class="form-select">
+                                        <option value="">Loading models...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="detail">Detail Level</label>
+                                    <select id="detail" name="detail" class="form-select">
+                                        <option value="high" selected>High Quality</option>
+                                        <option value="low">Fast Processing</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="concurrency">
+                                    Concurrency Level
+                                </label>
+                                <div class="range-group">
+                                    <input type="range" id="concurrency" name="concurrency" class="range-input" 
+                                           min="1" max="100" value="64"
+                                           oninput="document.getElementById('concurrencyValue').textContent = this.value">
+                                    <span id="concurrencyValue" class="range-value">64</span>
+                                </div>
+                                <div class="form-help">Number of pages processed simultaneously (1-100)</div>
+                            </div>
+
+                            <button type="submit" id="convertBtn" class="btn btn-primary btn-full">
+                                🚀 Start Conversion
+                            </button>
+                        </form>
+
+                        <div id="outputArea" class="results-section" style="display: none;">
+                            <h3>Conversion Results</h3>
+                            <div id="results"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Section -->
+                <section class="content-section" id="history-section">
+                    <div class="form-section">
+                        <h2 class="form-title">
+                            <span>📝</span>
+                            Conversion History
+                        </h2>
+                        <div class="empty-state">
+                            <h3>No conversion history</h3>
+                            <p>Your previous conversions will be stored here for easy access and re-download.</p>
+                            <p style="font-size: 0.875rem; margin-top: 1rem; opacity: 0.7;">
+                                <em>History persistence feature coming in a future update!</em>
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Logs Section -->
+                <section class="content-section" id="logs-section">
+                    <div class="form-section">
+                        <h2 class="form-title">
+                            <span>📋</span>
+                            System Logs
+                        </h2>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="showLogs" onchange="toggleLogViewer(this.checked)" style="margin-right: 0.5rem;">
+                                Enable real-time log monitoring
+                            </label>
+                        </div>
+
+                        <div id="logViewer" class="log-viewer" style="display: none;">
+                            <div class="log-header">
+                                <span>🔴 Live Activity Monitor</span>
+                                <div>
+                                    <span id="connectionStatus" class="connection-status disconnected">Disconnected</span>
+                                </div>
+                            </div>
+                            <div id="logContent" class="log-content"></div>
+                            <div class="log-controls">
+                                <button type="button" class="btn btn-outline" onclick="clearLogs()">Clear Logs</button>
+                                <button type="button" class="btn btn-outline" onclick="scrollToBottom()">Scroll to Bottom</button>
+                                <label style="margin-left: auto; display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="autoScroll" checked> Auto-scroll
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section class="content-section" id="settings-section">
+                    <div class="form-section">
+                        <h2 class="form-title">
+                            <span>⚙️</span>
+                            Application Settings
+                        </h2>
+
+                        <div class="form-group">
+                            <label class="form-label">Theme Preference</label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="darkModeToggle" onchange="toggleThemeFromSettings()">
+                                Enable dark mode
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="defaultModel">Default AI Model</label>
+                            <select id="defaultModel" class="form-select">
+                                <option value="">Use first available model</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="defaultConcurrency">Default Concurrency</label>
+                            <div class="range-group">
+                                <input type="range" id="defaultConcurrency" class="range-input" 
+                                       min="1" max="100" value="64"
+                                       oninput="document.getElementById('defaultConcurrencyValue').textContent = this.value">
+                                <span id="defaultConcurrencyValue" class="range-value">64</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="autoDownload">
+                                Automatically download completed files
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="notifications" checked>
+                                Enable desktop notifications
+                            </label>
+                        </div>
+
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+                    </div>
+                </section>
+            </div>
+        </main>
     </div>
 
     <script>
         let websocket = null;
         let logEntries = [];
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        let currentSection = 'dashboard';
+        let sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
 
         document.addEventListener('DOMContentLoaded', function() {
             loadModels();
+            initializeTheme();
+            loadSettings();
+            initializeSidebar();
+            initializeNavigation();
+            initializeDragDrop();
 
             document.getElementById('convertForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 convertFiles();
             });
+
+            // Initialize notifications
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
         });
+
+        function initializeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            sidebarCollapsed = !sidebarCollapsed;
+            localStorage.setItem('sidebarCollapsed', sidebarCollapsed);
+        }
+
+        function openMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.add('mobile-visible');
+            overlay.classList.add('active');
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.remove('mobile-visible');
+            overlay.classList.remove('active');
+        }
+
+        function initializeNavigation() {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.getAttribute('data-section');
+                    navigateToSection(section);
+                });
+            });
+        }
+
+        function navigateToSection(section) {
+            // Update navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.content-section').forEach(s => {
+                s.classList.remove('active');
+            });
+            document.getElementById(`${section}-section`).classList.add('active');
+
+            // Update page title
+            const titles = {
+                dashboard: { title: 'Dashboard', subtitle: 'Welcome to your PDF conversion workspace' },
+                convert: { title: 'Convert PDFs', subtitle: 'Transform your documents into clean Markdown' },
+                history: { title: 'Conversion History', subtitle: 'Review and manage your past conversions' },
+                logs: { title: 'System Logs', subtitle: 'Monitor real-time application activity' },
+                settings: { title: 'Settings', subtitle: 'Customize your modul8r experience' }
+            };
+
+            const pageInfo = titles[section] || { title: section, subtitle: '' };
+            document.getElementById('pageTitle').textContent = pageInfo.title;
+            document.getElementById('pageSubtitle').textContent = pageInfo.subtitle;
+            document.title = `${pageInfo.title} - modul8r`;
+
+            currentSection = section;
+
+            // Close mobile sidebar
+            closeMobileSidebar();
+        }
+
+        function initializeDragDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('files');
+
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+                if (files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    updateSelectedFiles(files);
+                }
+            });
+
+            fileInput.addEventListener('change', function() {
+                updateSelectedFiles(Array.from(this.files));
+            });
+        }
+
+        function updateSelectedFiles(files) {
+            const selectedFilesDiv = document.getElementById('selectedFiles');
+            if (files.length === 0) {
+                selectedFilesDiv.innerHTML = '';
+                return;
+            }
+
+            selectedFilesDiv.innerHTML = files.map(file => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+                    <span style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📄</span>
+                        <span>${file.name}</span>
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">(${(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function initializeTheme() {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
+            updateThemeIcon();
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            document.getElementById('darkModeToggle').checked = currentTheme === 'dark';
+            localStorage.setItem('theme', currentTheme);
+            updateThemeIcon();
+        }
+
+        function toggleThemeFromSettings() {
+            const isDark = document.getElementById('darkModeToggle').checked;
+            currentTheme = isDark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const themeIcon = document.querySelector('.theme-icon');
+            themeIcon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+        }
 
         async function loadModels() {
             try {
                 const response = await fetch('/models');
                 const models = await response.json();
                 const select = document.getElementById('model');
+                const defaultSelect = document.getElementById('defaultModel');
+                
                 select.innerHTML = '';
+                defaultSelect.innerHTML = '<option value="">Use first available model</option>';
 
                 models.forEach(model => {
                     const option = document.createElement('option');
                     option.value = model;
                     option.textContent = model;
                     select.appendChild(option);
+
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = model;
+                    defaultOption.textContent = model;
+                    defaultSelect.appendChild(defaultOption);
                 });
 
                 if (models.length > 0) {
@@ -306,9 +1442,12 @@
             const results = document.getElementById('results');
 
             btn.disabled = true;
-            btn.textContent = 'Converting...';
+            btn.innerHTML = '⏳ Converting...';
             outputArea.style.display = 'block';
-            results.innerHTML = '<div class="loading">Processing PDFs...</div>';
+            results.innerHTML = '<div class="loading">🔄 Processing your PDFs...</div>';
+
+            // Add activity to feed
+            addActivityItem('info', 'Conversion started', 'Processing files...');
 
             try {
                 const response = await fetch('/convert', {
@@ -322,12 +1461,22 @@
 
                 const data = await response.json();
                 displayResults(data);
+                addActivityItem('success', 'Conversion completed', `Successfully processed ${Object.keys(data).length} files`);
+                
+                // Show notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Conversion Complete', {
+                        body: `Successfully processed ${Object.keys(data).length} files`,
+                        icon: '/favicon.ico'
+                    });
+                }
             } catch (error) {
                 console.error('Conversion failed:', error);
-                results.innerHTML = `<div class="error">Conversion failed: ${error.message}</div>`;
+                results.innerHTML = `<div class="error">❌ Conversion failed: ${error.message}</div>`;
+                addActivityItem('error', 'Conversion failed', error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Convert';
+                btn.innerHTML = '🚀 Start Conversion';
             }
         }
 
@@ -336,7 +1485,7 @@
             results.innerHTML = '';
 
             if (Object.keys(data).length === 0) {
-                results.innerHTML = '<div class="error">No valid PDF files were processed.</div>';
+                results.innerHTML = '<div class="error">❌ No valid PDF files were processed.</div>';
                 return;
             }
 
@@ -344,21 +1493,23 @@
                 const fileResult = document.createElement('div');
                 fileResult.className = 'file-result';
 
-                const header = document.createElement('h3');
+                const header = document.createElement('div');
+                header.className = 'file-result-header';
 
-                const titleSpan = document.createElement('span');
-                titleSpan.textContent = filename;
+                const title = document.createElement('div');
+                title.className = 'file-result-title';
+                title.innerHTML = `<span>📄</span> ${filename}`;
 
                 const downloadBtn = document.createElement('button');
-                downloadBtn.className = 'download-btn';
+                downloadBtn.className = 'btn btn-secondary';
                 downloadBtn.innerHTML = '⬇️ Download';
                 downloadBtn.onclick = () => downloadMarkdown(filename, markdown);
 
-                header.appendChild(titleSpan);
+                header.appendChild(title);
                 header.appendChild(downloadBtn);
 
                 const content = document.createElement('div');
-                content.className = 'markdown-content';
+                content.className = 'file-result-content';
                 content.textContent = markdown;
 
                 fileResult.appendChild(header);
@@ -368,37 +1519,61 @@
         }
 
         function downloadMarkdown(filename, content) {
-            // Create a blob with the markdown content
             const blob = new Blob([content], { type: 'text/markdown' });
-
-            // Create a temporary URL for the blob
             const url = URL.createObjectURL(blob);
-
-            // Create a temporary download link
             const link = document.createElement('a');
             link.href = url;
-
-            // Generate filename: replace .pdf extension with .md
-            const markdownFilename = filename.replace(/\.pdf$/i, '.md');
-            link.download = markdownFilename;
-
-            // Trigger the download
+            link.download = filename.replace(/\.pdf$/i, '.md');
             document.body.appendChild(link);
             link.click();
-
-            // Clean up
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+
+            addActivityItem('success', 'File downloaded', `${filename.replace(/\.pdf$/i, '.md')}`);
+        }
+
+        function addActivityItem(type, title, description) {
+            const feed = document.getElementById('activityFeed');
+            
+            // Create activity element
+            const activity = document.createElement('div');
+            activity.className = 'activity-item';
+            activity.innerHTML = `
+                <div class="activity-icon ${type}">
+                    ${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'info' ? 'ℹ️' : '⚠️'}
+                </div>
+                <div class="activity-content">
+                    <div class="activity-text">${title}</div>
+                    <div class="activity-time">${new Date().toLocaleString()}</div>
+                </div>
+            `;
+
+            // Remove empty state if present
+            const emptyState = feed.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            feed.insertBefore(activity, feed.firstChild);
+
+            // Keep only last 10 activities
+            while (feed.children.length > 10) {
+                feed.removeChild(feed.lastChild);
+            }
         }
 
         function toggleLogViewer(show) {
             const logViewer = document.getElementById('logViewer');
+            const activityDot = document.getElementById('logActivityDot');
+            
             if (show) {
                 logViewer.style.display = 'block';
                 connectWebSocket();
+                activityDot.style.display = 'block';
             } else {
                 logViewer.style.display = 'none';
                 disconnectWebSocket();
+                activityDot.style.display = 'none';
             }
         }
 
@@ -428,7 +1603,6 @@
 
             websocket.onclose = function() {
                 updateConnectionStatus('disconnected');
-                // Attempt to reconnect after 5 seconds
                 setTimeout(() => {
                     if (document.getElementById('showLogs').checked) {
                         connectWebSocket();
@@ -464,16 +1638,14 @@
             logEntry.className = `log-entry ${logData.level ? logData.level.toLowerCase() : 'info'}`;
 
             const timestamp = new Date(logData.timestamp || Date.now()).toLocaleTimeString();
-            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${formatLogMessage(logData)}`;
+            logEntry.innerHTML = `<span style="color: var(--text-muted);">[${timestamp}]</span> ${formatLogMessage(logData)}`;
 
             logContent.appendChild(logEntry);
 
-            // Keep only the last 1000 entries
             while (logContent.children.length > 1000) {
                 logContent.removeChild(logContent.firstChild);
             }
 
-            // Auto-scroll if enabled
             if (document.getElementById('autoScroll').checked) {
                 logContent.scrollTop = logContent.scrollHeight;
             }
@@ -482,7 +1654,6 @@
         function formatLogMessage(logData) {
             let message = logData.event || logData.message || '';
 
-            // Add context information if available
             const contextKeys = ['request_id', 'filename', 'page', 'model', 'error'];
             const context = [];
 
@@ -493,7 +1664,7 @@
             }
 
             if (context.length > 0) {
-                message += ` <span style="color: #888;">(${context.join(', ')})</span>`;
+                message += ` <span style="color: var(--text-muted);">(${context.join(', ')})</span>`;
             }
 
             return message;
@@ -507,6 +1678,69 @@
         function scrollToBottom() {
             const logContent = document.getElementById('logContent');
             logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function loadSettings() {
+            const savedConcurrency = localStorage.getItem('defaultConcurrency');
+            if (savedConcurrency) {
+                document.getElementById('defaultConcurrency').value = savedConcurrency;
+                document.getElementById('defaultConcurrencyValue').textContent = savedConcurrency;
+                document.getElementById('concurrency').value = savedConcurrency;
+                document.getElementById('concurrencyValue').textContent = savedConcurrency;
+            }
+
+            const autoDownload = localStorage.getItem('autoDownload') === 'true';
+            document.getElementById('autoDownload').checked = autoDownload;
+
+            const notifications = localStorage.getItem('notifications') !== 'false';
+            document.getElementById('notifications').checked = notifications;
+        }
+
+        function saveSettings() {
+            const concurrency = document.getElementById('defaultConcurrency').value;
+            const autoDownload = document.getElementById('autoDownload').checked;
+            const notifications = document.getElementById('notifications').checked;
+
+            localStorage.setItem('defaultConcurrency', concurrency);
+            localStorage.setItem('autoDownload', autoDownload);
+            localStorage.setItem('notifications', notifications);
+
+            // Update convert form
+            document.getElementById('concurrency').value = concurrency;
+            document.getElementById('concurrencyValue').textContent = concurrency;
+
+            // Show success feedback
+            const btn = event.target;
+            const origText = btn.textContent;
+            btn.textContent = '✅ Settings Saved!';
+            btn.style.background = 'var(--success)';
+            
+            setTimeout(() => {
+                btn.textContent = origText;
+                btn.style.background = '';
+            }, 2000);
+
+            addActivityItem('success', 'Settings updated', 'Configuration saved successfully');
+        }
+
+        function showNotifications() {
+            // Placeholder for notifications panel
+            alert('Notifications feature will be implemented in a future update!');
+        }
+
+        // Mobile responsive
+        window.addEventListener('resize', function() {
+            if (window.innerWidth <= 768) {
+                document.querySelector('.mobile-only').style.display = 'block';
+            } else {
+                document.querySelector('.mobile-only').style.display = 'none';
+                closeMobileSidebar();
+            }
+        });
+
+        // Initialize mobile menu visibility
+        if (window.innerWidth <= 768) {
+            document.querySelector('.mobile-only').style.display = 'block';
         }
     </script>
 </body>
