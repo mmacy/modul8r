@@ -22,7 +22,7 @@ logger = get_logger("main")
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup and shutdown events."""
     # Startup
-        logger.info(
+    logger.info(
         "Starting Phase 1 foundation safeguards",
         throttling_enabled=settings.enable_message_throttling,
         memory_management_enabled=settings.enable_enhanced_memory_management,

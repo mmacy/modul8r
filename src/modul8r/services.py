@@ -37,9 +37,8 @@ class OpenAIService:
             self.logger.info("Fetched models", model_count=len(model_ids))
             return model_ids
         except Exception as e:
-            self.logger.warning("Failed to fetch models from API, using fallback", error=str(e))
-            # Fallback to common vision models if API call fails
-            return ["gpt-4.1-nano", "gpt-4.1-mini", "gpt-4.1"]
+            self.logger.warning("Failed to fetch models from API", error=str(e))
+            raise Exception(f"Failed to fetch models: {str(e)}")
 
     @retry(
         stop=stop_after_attempt(settings.retry_max_attempts),
