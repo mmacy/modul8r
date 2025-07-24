@@ -147,7 +147,7 @@ Configuration via environment variables (most use `MODUL8R_` prefix):
 
 - `OPENAI_API_KEY` - Your OpenAI API key (uses alias, no prefix)
 - `MODUL8R_OPENAI_DEFAULT_MODEL` - Default model (default: "gpt-4.1-nano")
-- `MODUL8R_OPENAI_MAX_TOKENS` - Max tokens per request (default: 100000)
+- `MODUL8R_OPENAI_MAX_TOKENS` - Max tokens per request (default: 32768)
 - `MODUL8R_OPENAI_TEMPERATURE` - Temperature setting (default: 0.1)
 - `MODUL8R_OPENAI_TIMEOUT` - Request timeout in seconds (default: 60.0)
 

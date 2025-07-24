@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # OpenAI Configuration
     openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
     openai_default_model: str = "gpt-4.1-nano"  # Default model for image processing
-    openai_max_tokens: int = 100000
+    openai_max_tokens: int = 32768
     openai_temperature: float = 0.1
     openai_timeout: float = 60.0
 
