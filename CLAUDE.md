@@ -29,7 +29,7 @@ The application is built with:
 
 ### API Endpoints
 - `GET /` - Serves the main HTML page for web UI
-- `GET /models` - Returns available OpenAI vision models via client.models.list()  
+- `GET /models` - Returns available OpenAI vision models via client.models.list()
 - `POST /convert` - Accepts multipart/form-data with PDF files, model selection, and detail level
 
 ### Processing Flow
@@ -68,7 +68,6 @@ uv run pytest  # Run all tests
 uv run pytest tests/test_services.py  # Run unit tests only
 uv run pytest tests/test_main.py  # Run API tests only
 uv run pytest tests/test_playwright.py  # Run web UI tests only (mocked)
-uv run python test_logging_fix.py  # Validate logging configuration
 ```
 
 ### End-to-End Testing with Playwright
@@ -121,7 +120,7 @@ custom_profile:
   detail_level: "high"    # "low" or "high"
   concurrency: 8          # 1-100
   timeout_minutes: 12     # Max wait time
-  
+
   # Optional browser overrides
   browser_overrides:
     headless: true        # Override global browser settings
@@ -215,7 +214,7 @@ MODUL8R_ENABLE_LOG_CAPTURE=true  # Enable WebSocket log streaming
 
 ### Critical Fixes Applied
 - **Duplicate Logging**: Resolved WebSocket log duplication with proper deduplication
-- **Retry Loops**: Limited retry attempts to prevent endless processing cycles  
+- **Retry Loops**: Limited retry attempts to prevent endless processing cycles
 - **TaskGroup Errors**: Improved exception handling for concurrent operations
 - **Memory Management**: Added cleanup for log entries and task results
 
