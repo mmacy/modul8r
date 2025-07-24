@@ -112,21 +112,21 @@ class TestLogStreamManager:
     def test_log_stream_manager_initialization(self):
         """Test LogStreamManager initializes with throttling if enabled."""
         # Test with throttling enabled (default)
-        with patch.object(settings, 'enable_message_throttling', True):
+        with patch.object(settings, "enable_message_throttling", True):
             manager = LogStreamManager()
             assert manager.throttled_broadcaster is not None
             assert isinstance(manager.throttled_broadcaster, ThrottledBroadcaster)
 
     def test_log_stream_manager_throttling_disabled(self):
         """Test LogStreamManager without throttling when disabled."""
-        with patch.object(settings, 'enable_message_throttling', False):
+        with patch.object(settings, "enable_message_throttling", False):
             manager = LogStreamManager()
             assert manager.throttled_broadcaster is None
 
     @pytest.mark.asyncio
     async def test_broadcast_log_with_throttling(self):
         """Test that log broadcasting uses throttling when enabled."""
-        with patch.object(settings, 'enable_message_throttling', True):
+        with patch.object(settings, "enable_message_throttling", True):
             manager = LogStreamManager()
             manager.active_connections = {Mock()}
 
@@ -142,7 +142,7 @@ class TestLogStreamManager:
     @pytest.mark.asyncio
     async def test_broadcast_log_without_throttling(self):
         """Test that log broadcasting falls back to direct when throttling disabled."""
-        with patch.object(settings, 'enable_message_throttling', False):
+        with patch.object(settings, "enable_message_throttling", False):
             manager = LogStreamManager()
             manager.active_connections = {Mock()}
             manager._direct_broadcast = AsyncMock()
@@ -154,7 +154,7 @@ class TestLogStreamManager:
 
     def test_get_throttling_stats_enabled(self):
         """Test throttling stats when throttling is enabled."""
-        with patch.object(settings, 'enable_message_throttling', True):
+        with patch.object(settings, "enable_message_throttling", True):
             manager = LogStreamManager()
             manager.active_connections = {Mock(), Mock()}
 
@@ -163,7 +163,7 @@ class TestLogStreamManager:
                 "pending_messages": 5,
                 "total_messages": 100,
                 "current_rate": 2.5,
-                "circuit_breaker_active": False
+                "circuit_breaker_active": False,
             }
             manager.throttled_broadcaster.get_stats = Mock(return_value=mock_stats)
 
@@ -175,7 +175,7 @@ class TestLogStreamManager:
 
     def test_get_throttling_stats_disabled(self):
         """Test throttling stats when throttling is disabled."""
-        with patch.object(settings, 'enable_message_throttling', False):
+        with patch.object(settings, "enable_message_throttling", False):
             manager = LogStreamManager()
             manager.active_connections = {Mock(), Mock()}
 
@@ -207,8 +207,7 @@ class TestSimpleEventLoopMonitor:
         assert monitor.max_lag_ms == settings.performance_monitor_max_lag_ms
         assert monitor.check_interval == settings.performance_monitor_check_interval
         expected_severe_threshold = (
-            settings.performance_monitor_max_lag_ms *
-            settings.performance_monitor_severe_lag_threshold_multiplier
+            settings.performance_monitor_max_lag_ms * settings.performance_monitor_severe_lag_threshold_multiplier
         )
         assert monitor.severe_lag_threshold == expected_severe_threshold
 
@@ -238,9 +237,9 @@ class TestSimpleEventLoopMonitor:
         async def mock_check():
             # Simulate lag measurement
             measurement = {
-                'timestamp': time.perf_counter(),
-                'lag_ms': 25.0,
-                'expected_interval': monitor.check_interval
+                "timestamp": time.perf_counter(),
+                "lag_ms": 25.0,
+                "expected_interval": monitor.check_interval,
             }
             monitor.lag_measurements.append(measurement)
 
@@ -251,7 +250,7 @@ class TestSimpleEventLoopMonitor:
         await monitor._check_event_loop_lag()
 
         assert len(monitor.lag_measurements) == 2
-        assert monitor.lag_measurements[0]['lag_ms'] == 25.0
+        assert monitor.lag_measurements[0]["lag_ms"] == 25.0
 
     def test_degradation_callback_management(self):
         """Test adding and removing degradation callbacks."""
@@ -309,20 +308,20 @@ class TestSimpleEventLoopMonitor:
         # Add some mock measurements
         base_time = time.perf_counter()
         monitor.lag_measurements = [
-            {'timestamp': base_time, 'lag_ms': 10.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 1, 'lag_ms': 20.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 2, 'lag_ms': 30.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 3, 'lag_ms': 15.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 4, 'lag_ms': 25.0, 'expected_interval': 1.0},
+            {"timestamp": base_time, "lag_ms": 10.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 1, "lag_ms": 20.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 2, "lag_ms": 30.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 3, "lag_ms": 15.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 4, "lag_ms": 25.0, "expected_interval": 1.0},
         ]
 
         stats = monitor.get_performance_stats()
 
-        assert stats['status'] == 'active'
-        assert 'recent_stats' in stats
-        assert stats['recent_stats']['avg_lag_ms'] == 20.0  # Average of last 5
-        assert stats['recent_stats']['max_lag_ms'] == 30.0
-        assert stats['recent_stats']['min_lag_ms'] == 10.0
+        assert stats["status"] == "active"
+        assert "recent_stats" in stats
+        assert stats["recent_stats"]["avg_lag_ms"] == 20.0  # Average of last 5
+        assert stats["recent_stats"]["max_lag_ms"] == 30.0
+        assert stats["recent_stats"]["min_lag_ms"] == 10.0
 
     def test_is_healthy(self):
         """Test health check functionality."""
@@ -334,20 +333,20 @@ class TestSimpleEventLoopMonitor:
         # Add low lag measurements - should be healthy
         base_time = time.perf_counter()
         monitor.lag_measurements = [
-            {'timestamp': base_time, 'lag_ms': 10.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 1, 'lag_ms': 15.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 2, 'lag_ms': 20.0, 'expected_interval': 1.0},
+            {"timestamp": base_time, "lag_ms": 10.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 1, "lag_ms": 15.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 2, "lag_ms": 20.0, "expected_interval": 1.0},
         ]
 
         assert monitor.is_healthy()
 
         # Add high lag measurements - should not be healthy
         monitor.lag_measurements = [  # Replace instead of extend to ensure we have recent high lag
-            {'timestamp': base_time + 1, 'lag_ms': 50.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 2, 'lag_ms': 60.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 3, 'lag_ms': 55.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 4, 'lag_ms': 65.0, 'expected_interval': 1.0},
-            {'timestamp': base_time + 5, 'lag_ms': 70.0, 'expected_interval': 1.0},
+            {"timestamp": base_time + 1, "lag_ms": 50.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 2, "lag_ms": 60.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 3, "lag_ms": 55.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 4, "lag_ms": 65.0, "expected_interval": 1.0},
+            {"timestamp": base_time + 5, "lag_ms": 70.0, "expected_interval": 1.0},
         ]
 
         assert not monitor.is_healthy()
@@ -378,11 +377,7 @@ class TestEnhancedLogCapture:
         capture = EnhancedLogCapture()
         capture._subscribers = [Mock()]  # Mock subscriber to process entry
 
-        test_entry = {
-            "event": "test message",
-            "level": "info",
-            "_websocket_only": True
-        }
+        test_entry = {"event": "test message", "level": "info", "_websocket_only": True}
 
         capture.add_entry(test_entry)
 
@@ -399,19 +394,11 @@ class TestEnhancedLogCapture:
 
         # Add an old entry
         old_time = (datetime.now(UTC) - timedelta(seconds=2)).isoformat()
-        old_entry = {
-            "event": "old message",
-            "timestamp": old_time,
-            "level": "info"
-        }
+        old_entry = {"event": "old message", "timestamp": old_time, "level": "info"}
         capture.entries.append(old_entry)
 
         # Add a recent entry
-        recent_entry = {
-            "event": "recent message",
-            "timestamp": datetime.now(UTC).isoformat(),
-            "level": "info"
-        }
+        recent_entry = {"event": "recent message", "timestamp": datetime.now(UTC).isoformat(), "level": "info"}
         capture.entries.append(recent_entry)
 
         assert len(capture.entries) == 2
@@ -428,17 +415,18 @@ class TestEnhancedLogCapture:
         capture = EnhancedLogCapture()
 
         # Add some entries
-        capture.entries.extend([
-            {"event": "test1", "level": "info"},
-            {"event": "test2", "level": "error"},
-            {"event": "test3", "level": "warning"}
-        ])
+        capture.entries.extend(
+            [
+                {"event": "test1", "level": "info"},
+                {"event": "test2", "level": "error"},
+                {"event": "test3", "level": "warning"},
+            ]
+        )
 
         # Add some memory samples
-        capture.memory_usage_samples.extend([
-            {"timestamp": time.time() - 60, "memory_mb": 100.0},
-            {"timestamp": time.time(), "memory_mb": 110.0}
-        ])
+        capture.memory_usage_samples.extend(
+            [{"timestamp": time.time() - 60, "memory_mb": 100.0}, {"timestamp": time.time(), "memory_mb": 110.0}]
+        )
 
         stats = capture.get_memory_stats()
 
@@ -471,7 +459,7 @@ class TestPhase1Integration:
         # Create components
         monitor = SimpleEventLoopMonitor(max_lag_ms=30.0)
 
-        with patch.object(settings, 'enable_message_throttling', True):
+        with patch.object(settings, "enable_message_throttling", True):
             manager = LogStreamManager()
 
         # Verify initial throttling settings
@@ -516,7 +504,7 @@ class TestPhase1Integration:
         assert log_capture.cleanup_task is not None or asyncio.get_running_loop() is None
 
         # WebSocket manager with throttling
-        with patch.object(settings, 'enable_message_throttling', True):
+        with patch.object(settings, "enable_message_throttling", True):
             manager = LogStreamManager()
             assert manager.throttled_broadcaster is not None
 
@@ -538,28 +526,28 @@ class TestPhase1Configuration:
     def test_all_phase1_settings_exist(self):
         """Test that all Phase 1 configuration settings exist."""
         # Message throttling settings
-        assert hasattr(settings, 'throttle_batch_interval')
-        assert hasattr(settings, 'throttle_max_batch_size')
-        assert hasattr(settings, 'throttle_circuit_breaker_threshold')
-        assert hasattr(settings, 'throttle_circuit_breaker_window')
-        assert hasattr(settings, 'throttle_circuit_breaker_recovery_time')
+        assert hasattr(settings, "throttle_batch_interval")
+        assert hasattr(settings, "throttle_max_batch_size")
+        assert hasattr(settings, "throttle_circuit_breaker_threshold")
+        assert hasattr(settings, "throttle_circuit_breaker_window")
+        assert hasattr(settings, "throttle_circuit_breaker_recovery_time")
 
         # Memory management settings
-        assert hasattr(settings, 'enhanced_log_capture_max_entries')
-        assert hasattr(settings, 'enhanced_log_capture_max_age_seconds')
-        assert hasattr(settings, 'enhanced_log_capture_cleanup_interval')
+        assert hasattr(settings, "enhanced_log_capture_max_entries")
+        assert hasattr(settings, "enhanced_log_capture_max_age_seconds")
+        assert hasattr(settings, "enhanced_log_capture_cleanup_interval")
 
         # Performance monitoring settings
-        assert hasattr(settings, 'performance_monitor_max_lag_ms')
-        assert hasattr(settings, 'performance_monitor_check_interval')
-        assert hasattr(settings, 'performance_monitor_severe_lag_threshold_multiplier')
-        assert hasattr(settings, 'performance_monitor_max_severe_lag_count')
+        assert hasattr(settings, "performance_monitor_max_lag_ms")
+        assert hasattr(settings, "performance_monitor_check_interval")
+        assert hasattr(settings, "performance_monitor_severe_lag_threshold_multiplier")
+        assert hasattr(settings, "performance_monitor_max_severe_lag_count")
 
         # Feature flags
-        assert hasattr(settings, 'enable_message_throttling')
-        assert hasattr(settings, 'enable_enhanced_memory_management')
-        assert hasattr(settings, 'enable_performance_monitoring')
-        assert hasattr(settings, 'enable_phase1_status_endpoint')
+        assert hasattr(settings, "enable_message_throttling")
+        assert hasattr(settings, "enable_enhanced_memory_management")
+        assert hasattr(settings, "enable_performance_monitoring")
+        assert hasattr(settings, "enable_phase1_status_endpoint")
 
     def test_phase1_settings_have_reasonable_defaults(self):
         """Test that Phase 1 settings have reasonable default values."""
