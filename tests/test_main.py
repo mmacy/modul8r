@@ -45,7 +45,7 @@ class TestMainEndpoints:
     def test_get_models_success(self, client, mock_openai_service):
         # Override the dependency
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
-        
+
         try:
             response = client.get("/models")
             assert response.status_code == 200
@@ -57,14 +57,15 @@ class TestMainEndpoints:
     def test_get_models_failure(self, client, mock_openai_service):
         # Clear cache to ensure fresh error is triggered
         from src.modul8r.model_cache import model_cache
+
         model_cache.clear_cache()
-        
+
         # Configure service to raise exception
         mock_openai_service.get_vision_models = AsyncMock(side_effect=Exception("API Error"))
-        
+
         # Override the dependency
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
-        
+
         try:
             response = client.get("/models")
             assert response.status_code == 500
@@ -80,11 +81,11 @@ class TestMainEndpoints:
     def test_convert_pdfs_success(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
         # Configure services
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
-        
+
         # Override dependencies
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
         app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
-        
+
         try:
             # Prepare file upload
             files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
@@ -104,11 +105,11 @@ class TestMainEndpoints:
         # Configure services with error
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
         mock_pdf_service.pdf_to_images.side_effect = Exception("PDF processing error")
-        
+
         # Override dependencies
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
         app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
-        
+
         try:
             # Prepare file upload
             files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
@@ -127,11 +128,11 @@ class TestMainEndpoints:
     def test_convert_pdfs_no_model_specified(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
         # Configure services
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
-        
+
         # Override dependencies
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
         app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
-        
+
         try:
             # Prepare file upload without model specified
             files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
@@ -164,11 +165,11 @@ class TestMainEndpoints:
         mock_openai_service.process_images_batch = AsyncMock(return_value=["# Page 1", "# Page 2"])
         mock_pdf_service.pdf_to_images.return_value = [b"page1_data", b"page2_data"]
         mock_pdf_service.images_to_base64.return_value = ["page1_base64", "page2_base64"]
-        
+
         # Override dependencies
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
         app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
-        
+
         try:
             # Prepare file upload
             files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
