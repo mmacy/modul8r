@@ -19,7 +19,7 @@ class OpenAIService:
         self.logger = get_logger("openai_service")
 
     async def get_vision_models(self) -> List[str]:
-        """Get list of all available models from OpenAI."""
+        """Get list of all available  vision models from OpenAI."""
         self.logger.info("Fetching model list from OpenAI")
         try:
             models = await self.client.models.list()
@@ -29,7 +29,7 @@ class OpenAIService:
                 if model.id.startswith("gpt-4") or model.id.startswith("o"):  # Vision models start with gpt-4 or o
                     # Filter for vision models only
                     self.logger.debug("Found vision model", model_id=model.id)
-                model_ids.append(model.id)
+                    model_ids.append(model.id)
 
             # Sort alphabetically
             model_ids.sort()

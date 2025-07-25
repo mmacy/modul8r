@@ -26,6 +26,7 @@ import requests
 from src.modul8r.main import app, get_openai_service, get_pdf_service
 from src.modul8r.services import OpenAIService, PDFService
 from .e2e_config import E2EConfig, E2EConfigError
+from src.modul8r.model_cache import model_cache
 
 
 def pytest_generate_tests(metafunc):
@@ -52,6 +53,7 @@ def event_loop():
 
 # ========== MOCK SERVER FIXTURES (for fast UI tests) ==========
 
+
 @pytest_asyncio.fixture(scope="session")
 async def mock_server():
     """Start FastAPI server with mocked services for fast UI tests."""
@@ -59,15 +61,15 @@ async def mock_server():
     mock_openai = Mock(spec=OpenAIService)
     mock_openai.get_vision_models = AsyncMock(return_value=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"])
     mock_openai.process_images_batch = AsyncMock(return_value=["# Test Document\n\nThis is a test conversion."])
-    
+
     mock_pdf = Mock(spec=PDFService)
     mock_pdf.pdf_to_images.return_value = [b"fake_image_data"]
     mock_pdf.images_to_base64.return_value = ["base64_encoded_image"]
-    
+
     # Override dependencies
     app.dependency_overrides[get_openai_service] = lambda: mock_openai
     app.dependency_overrides[get_pdf_service] = lambda: mock_pdf
-    
+
     try:
         # Start server in a separate thread
         def run_server():
@@ -104,6 +106,7 @@ async def mock_page(mock_browser: Browser, mock_server):
 
 
 # ========== REAL SERVER FIXTURES (for E2E tests) ==========
+
 
 @pytest.fixture(scope="session")
 def e2e_config():
@@ -186,6 +189,7 @@ async def real_page(real_browser: Browser, real_server, e2e_config):
 
 # ========== FAST UI COMPONENT TESTS (with mocks) ==========
 
+
 class TestUIComponents:
     """Fast UI component tests using mocked services."""
 
@@ -204,24 +208,22 @@ class TestUIComponents:
     @pytest.mark.asyncio
     async def test_models_dropdown_populated(self, mock_page: Page):
         """Test that the models dropdown is populated with mocked data."""
-        # Navigate to Convert PDFs section first
-        convert_nav = mock_page.locator('text="Convert PDFs"')
-        if await convert_nav.count() > 0:
-            await convert_nav.click()
-            await mock_page.wait_for_timeout(1000)
+        # The mock_page fixture loads the page with data from the startup cache.
+        # We must clear the cache and then reload the page to force a re-fetch.
+        model_cache.clear_cache()
+        await mock_page.reload()
 
-        # Wait for models dropdown to have options
-        model_select = mock_page.locator('select[name="model"]')
+        # Wait for the models dropdown to have options after the reload
         await mock_page.wait_for_function(
             "document.querySelector('select[name=\"model\"]').options.length > 1", timeout=10000
         )
 
         # Check that mocked models are loaded
+        model_select = mock_page.locator('select[name="model"]')
         options = await model_select.locator("option").all_text_contents()
         print(f"Available models in mock test: {options}")
 
         assert len(options) > 1, "Should have more than just placeholder"
-        # Check for at least some of the mocked models
         model_found = any("gpt-4" in option.lower() for option in options)
         assert model_found, f"Should have mocked GPT-4 models in options: {options}"
 
@@ -254,6 +256,7 @@ class TestUIComponents:
 
 # ========== COMPREHENSIVE E2E TESTS (with real APIs) ==========
 
+
 class TestE2EInfrastructure:
     """Test infrastructure components that support all E2E profiles."""
 
@@ -276,7 +279,9 @@ class TestE2EInfrastructure:
         print(f"Available models from OpenAI API: {options}")
 
         assert len(options) > 1, "Should have more than just placeholder"
-        assert any("gpt" in option.lower() or "o1" in option.lower() or "o3" in option.lower() for option in options), "Should have real OpenAI models"
+        assert any("gpt" in option.lower() or "o1" in option.lower() or "o3" in option.lower() for option in options), (
+            "Should have real OpenAI models"
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -400,33 +405,33 @@ class TestE2EProfiles:
 
         # 9. Wait for conversion to complete with profile-specific timeout
         timeout_ms = profile["timeout_minutes"] * 60 * 1000
-        
+
         # Look for completion indicators
         try:
             # Wait for either download button or completion message
             await real_page.wait_for_selector(
                 'button:has-text("Download"), .conversion-complete, .success-message, .result-content',
-                timeout=timeout_ms
+                timeout=timeout_ms,
             )
             print("PDF conversion completed successfully")
-            
+
             # Try to find and verify download button
             download_buttons = real_page.locator('button:has-text("Download")')
             download_count = await download_buttons.count()
             print(f"Found {download_count} download buttons")
-            
+
             assert download_count > 0, "Should have at least one download button after successful conversion"
-            
+
         except Exception as e:
             # Capture screenshot on failure
             screenshot_path = f"test_failure_{e2e_profile}_{int(time.time())}.png"
             await real_page.screenshot(path=screenshot_path)
             print(f"Screenshot saved to {screenshot_path}")
-            
+
             # Get page content for debugging
             page_content = await real_page.content()
             print(f"Page content length: {len(page_content)}")
-            
+
             raise AssertionError(f"E2E test failed for profile {e2e_profile}: {e}")
 
     @pytest.mark.e2e
@@ -435,7 +440,7 @@ class TestE2EProfiles:
     async def test_e2e_profile_concurrent_processing(self, real_page: Page, e2e_profile: str, e2e_config: E2EConfig):
         """Test concurrent processing capabilities using YAML profile settings."""
         profile = e2e_config.get_profile(e2e_profile)
-        
+
         # This test focuses on verifying concurrency settings work correctly
         pdf_path = Path("playwright-e2e") / profile["pdf_file"]
         if not pdf_path.exists():
@@ -448,7 +453,7 @@ class TestE2EProfiles:
 
         # Wait for page to load
         await real_page.wait_for_selector('select[name="model"]')
-        
+
         # Set maximum concurrency for this test
         concurrency_input = real_page.locator('input[name="concurrency"], input[type="range"]')
         if await concurrency_input.count() > 0:
@@ -458,7 +463,9 @@ class TestE2EProfiles:
         # Verify concurrency setting was applied
         if await concurrency_input.count() > 0:
             current_value = await concurrency_input.first.input_value()
-            assert int(current_value) == profile["concurrency"], f"Concurrency not set correctly: {current_value} != {profile['concurrency']}"
+            assert int(current_value) == profile["concurrency"], (
+                f"Concurrency not set correctly: {current_value} != {profile['concurrency']}"
+            )
 
         print(f"Concurrency test passed for profile {e2e_profile}")
 
@@ -469,7 +476,7 @@ class TestE2EProfiles:
         """Test download functionality after successful conversion."""
         profile = e2e_config.get_profile(e2e_profile)
         pdf_path = Path("playwright-e2e") / profile["pdf_file"]
-        
+
         if not pdf_path.exists():
             pytest.skip(f"PDF file not found for profile '{e2e_profile}': {pdf_path}")
 
@@ -481,6 +488,6 @@ class TestE2EProfiles:
         # Check if download functionality is present in the UI
         download_elements = await real_page.locator('button:has-text("Download"), .download, [download]').count()
         print(f"Found {download_elements} download-related elements")
-        
+
         # This is a structural test - actual download testing would require full conversion
         assert True, f"Download functionality test completed for profile {e2e_profile}"

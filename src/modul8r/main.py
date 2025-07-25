@@ -13,6 +13,7 @@ from .config import settings
 from .logging_config import get_logger, set_request_context, generate_request_id
 from .websocket_handlers import log_stream_manager
 from .performance_monitor import start_performance_monitoring, stop_performance_monitoring, get_global_performance_stats
+from .model_cache import model_cache
 
 # Configure logging on startup
 logger = get_logger("main")
@@ -36,12 +37,25 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Performance monitoring disabled")
 
+    # Initialize model cache on startup
+    openai_service = OpenAIService()
+    try:
+        await model_cache.get_models(openai_service)
+        await model_cache.start_periodic_refresh(openai_service)
+        logger.info("Model cache initialized and periodic refresh started")
+    except Exception as e:
+        logger.warning("Failed to initialize model cache", error=str(e))
+
     logger.info("Phase 1 foundation safeguards ready")
 
     yield  # Application runs here
 
     # Shutdown
     logger.info("Shutting down Phase 1 foundation safeguards")
+
+    # Stop model cache periodic refresh
+    await model_cache.stop_periodic_refresh()
+    logger.info("Model cache periodic refresh stopped")
 
     # Stop performance monitoring if it was enabled
     if settings.enable_performance_monitoring:
@@ -97,11 +111,11 @@ async def root(request: Request):
 
 @app.get("/models")
 async def get_models(openai_service: OpenAIService = Depends(get_openai_service)):
-    """Get list of available OpenAI models."""
-    logger.info("Fetching available models")
+    """Get list of available OpenAI models from cache."""
+    logger.info("Fetching available models from cache")
     try:
-        models = await openai_service.get_vision_models()
-        logger.info("Fetched models", model_count=len(models))
+        models = await model_cache.get_models(openai_service)
+        logger.info("Returned cached models", model_count=len(models))
         return models
     except Exception as e:
         logger.error("Failed to fetch models", error=str(e))
@@ -130,7 +144,7 @@ async def convert_pdfs(
 
     # Use default model if none specified
     if not model:
-        available_models = await openai_service.get_vision_models()
+        available_models = await model_cache.get_models(openai_service)
         model = available_models[0] if available_models else settings.openai_default_model
         logger.info("Using default model", model=model)
 
@@ -263,6 +277,7 @@ async def get_status():
             "max_concurrent_requests": settings.max_concurrent_requests,
             "default_model": settings.openai_default_model,
         },
+        "model_cache": model_cache.get_cache_status(),
     }
 
 
