@@ -206,11 +206,15 @@ class LogCapture:
     def add_subscriber(self, subscriber: Any) -> None:
         """Add a WebSocket subscriber."""
         self._subscribers.append(subscriber)
+        self._start_broadcast_task()
 
     def remove_subscriber(self, subscriber: Any) -> None:
         """Remove a WebSocket subscriber."""
         if subscriber in self._subscribers:
             self._subscribers.remove(subscriber)
+        if not self._subscribers and self.broadcast_task and not self.broadcast_task.done():
+            self.broadcast_task.cancel()
+            self.broadcast_task = None
 
     def has_subscribers(self) -> bool:
         """Check if there are any active WebSocket subscribers."""
@@ -241,6 +245,10 @@ class EnhancedLogCapture(LogCapture):
         self.memory_usage_samples = deque(maxlen=100)  # Keep last 100 memory samples
         self.last_cleanup_time = time.time()
 
+        # Queue and task for asynchronous WebSocket broadcasting
+        self.broadcast_queue: asyncio.Queue = asyncio.Queue(maxsize=max_entries)
+        self.broadcast_task: Optional[asyncio.Task] = None
+
         # Convert list to deque for efficient operations
         if isinstance(self.entries, list):
             self.entries = deque(self.entries, maxlen=max_entries)
@@ -256,6 +264,29 @@ class EnhancedLogCapture(LogCapture):
         # Get logger after module initialization to avoid circular reference
         _logger = get_logger("enhanced_log_capture")
         _logger.debug("EnhancedLogCapture initialized", max_entries=max_entries, max_age_seconds=max_age_seconds)
+
+    def _start_broadcast_task(self) -> None:
+        """Ensure the background broadcast task is running."""
+        if self.broadcast_task is None or self.broadcast_task.done():
+            try:
+                loop = asyncio.get_running_loop()
+                self.broadcast_task = loop.create_task(self._broadcast_loop())
+            except RuntimeError:
+                pass
+
+    async def _broadcast_loop(self) -> None:
+        """Continuously send queued log entries to WebSocket clients."""
+        logger = get_logger("enhanced_log_capture")
+        while True:
+            try:
+                entry = await self.broadcast_queue.get()
+                manager = getattr(self, "_websocket_manager", None)
+                if manager:
+                    await manager.broadcast_log(entry)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error("Log broadcast error", error=str(e))
 
     async def periodic_cleanup(self) -> None:
         """
@@ -379,13 +410,13 @@ class EnhancedLogCapture(LogCapture):
 
         # The deque maxlen handles size-based cleanup automatically
 
-        # Notify WebSocket subscribers asynchronously
+        # Queue log entry for asynchronous WebSocket broadcast
         if self.has_subscribers():
             try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._notify_subscribers_async(clean_entry))
-            except RuntimeError:
-                # No event loop running, skip WebSocket broadcast
+                self.broadcast_queue.put_nowait(clean_entry)
+                self._start_broadcast_task()
+            except asyncio.QueueFull:
+                # Drop log if queue is full to avoid blocking
                 pass
 
     def get_memory_stats(self) -> Dict[str, Any]:
@@ -440,6 +471,8 @@ class EnhancedLogCapture(LogCapture):
         """Cleanup task when object is destroyed."""
         if self.cleanup_task and not self.cleanup_task.done():
             self.cleanup_task.cancel()
+        if self.broadcast_task and not self.broadcast_task.done():
+            self.broadcast_task.cancel()
 
 
 # Global log capture instance - replaced with enhanced version for Phase 1
