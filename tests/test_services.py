@@ -43,10 +43,11 @@ class TestOpenAIService:
 
         assert "gpt-4o" in models
         assert "gpt-4o-mini" in models
-        # All models should be included in the response (filtering happens in UI)
         assert "gpt-4o" in models
         assert "gpt-4o-mini" in models
-        assert "gpt-3.5-turbo" in models
+
+        # Only vision models should be returned
+        assert "gpt-3.5-turbo" not in models
 
     @pytest.mark.asyncio
     async def test_get_vision_models_failure(self, mock_openai_client):
@@ -58,7 +59,7 @@ class TestOpenAIService:
         # Should raise exception when API fails
         with pytest.raises(Exception) as exc_info:
             await service.get_vision_models()
-        
+
         assert "Failed to fetch models" in str(exc_info.value)
 
     @pytest.mark.asyncio

@@ -55,6 +55,10 @@ class TestMainEndpoints:
             app.dependency_overrides.clear()
 
     def test_get_models_failure(self, client, mock_openai_service):
+        # Clear cache to ensure fresh error is triggered
+        from src.modul8r.model_cache import model_cache
+        model_cache.clear_cache()
+        
         # Configure service to raise exception
         mock_openai_service.get_vision_models = AsyncMock(side_effect=Exception("API Error"))
         
