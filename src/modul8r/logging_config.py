@@ -282,7 +282,10 @@ class EnhancedLogCapture(LogCapture):
                 entry = await self.broadcast_queue.get()
                 manager = getattr(self, "_websocket_manager", None)
                 if manager:
-                    await manager.broadcast_log(entry)
+                    # Use immediate broadcast so UI receives standard
+                    # ``log_entry`` messages instead of ``batch_update``
+                    # objects from the throttled path.
+                    await manager.broadcast_log_immediate(entry)
             except asyncio.CancelledError:
                 break
             except Exception as e:
