@@ -171,7 +171,9 @@ class LogCapture:
         if self.has_subscribers():
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self._notify_subscribers_async(clean_entry))
+                self._last_notify_task = loop.create_task(
+                    self._notify_subscribers_async(clean_entry)
+                )
             except RuntimeError:
                 # No event loop running, skip WebSocket broadcast
                 pass
@@ -464,7 +466,7 @@ class EnhancedLogCapture(LogCapture):
             # Schedule immediate cleanup
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self._perform_cleanup())
+                self._last_cleanup_task = loop.create_task(self._perform_cleanup())
             except RuntimeError:
                 pass
 
