@@ -176,6 +176,119 @@ class OpenAIService:
             self.logger.error("No pages could be processed successfully")
             return []
 
+    async def _combine_markdown_versions(
+        self, page_index: int, versions: List[str], model: str
+    ) -> Tuple[int, str]:
+        """Combine multiple Markdown versions using a language model."""
+        system_prompt = (
+            "You are an expert at consolidating multiple attempts to extract text "
+            "from a scanned TTRPG module page. Given up to three Markdown "
+            "versions, produce the most complete and accurate combined version. "
+            "Return ONLY the merged Markdown without commentary."
+        )
+
+        user_prompt = "\n\n".join(
+            f"Version {i + 1}:\n{md}" for i, md in enumerate(versions)
+        )
+
+        async with self.semaphore:
+            try:
+                async with asyncio.timeout(settings.openai_timeout):
+                    request_params = {
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                    }
+
+                    if model.startswith("o"):
+                        request_params["max_completion_tokens"] = 100000
+                    else:
+                        request_params["max_tokens"] = settings.openai_max_tokens
+                        request_params["temperature"] = settings.openai_temperature
+
+                    response = await self.client.chat.completions.create(
+                        **request_params
+                    )
+
+                content = response.choices[0].message.content or ""
+                self.logger.info(
+                    "Combined page", page=page_index + 1, content_length=len(content)
+                )
+                return page_index, content
+            except Exception as e:
+                self.logger.error("Failed to combine page", page=page_index + 1, error=str(e))
+                raise
+
+    async def _process_page_fan_out_fan_in(
+        self,
+        page_index: int,
+        image_base64: str,
+        fan_out_models: List[str],
+        fan_in_model: str,
+        detail: str,
+    ) -> Tuple[int, str]:
+        """Process a single page using fan-out/fan-in."""
+        fan_out_tasks = [
+            asyncio.create_task(self._process_single_image(page_index, image_base64, m, detail))
+            for m in fan_out_models
+        ]
+
+        results: List[str] = []
+        for task in fan_out_tasks:
+            try:
+                _, content = await task
+                if content and content.strip():
+                    results.append(content)
+            except Exception as e:
+                self.logger.error(
+                    "Fan-out processing failed", page=page_index + 1, error=str(e)
+                )
+
+        if not results:
+            return page_index, ""
+
+        return await self._combine_markdown_versions(page_index, results, fan_in_model)
+
+    async def process_images_fan_out_fan_in(
+        self,
+        images_base64: List[str],
+        fan_out_models: Optional[List[str]] = None,
+        fan_in_model: str = "gpt-4.1-nano",
+        detail: str = "high",
+    ) -> List[str]:
+        """Process images using fan-out/fan-in with optional model list."""
+        if not images_base64:
+            return []
+
+        fan_out_models = fan_out_models or [settings.openai_default_model] * 3
+
+        total_pages = len(images_base64)
+
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tasks = [
+                    tg.create_task(
+                        self._process_page_fan_out_fan_in(
+                            i, img, fan_out_models, fan_in_model, detail
+                        )
+                    )
+                    for i, img in enumerate(images_base64)
+                ]
+
+            results = ["" for _ in range(total_pages)]
+            for task in tasks:
+                page_index, content = task.result()
+                results[page_index] = content
+
+            return [r for r in results if r.strip()]
+        except Exception as e:
+            self.logger.error(
+                "Error during fan-out/fan-in processing", error=str(e)
+            )
+            return []
+
 
 class PDFService:
     def __init__(self):
