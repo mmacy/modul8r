@@ -1114,6 +1114,32 @@
                                 <div class="form-help">Number of pages processed simultaneously (1-100)</div>
                             </div>
 
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="fanOutToggle" name="fan_out_enabled">
+                                    Enable fan-out/fan-in
+                                </label>
+                            </div>
+
+                            <div id="fanSettings" style="display: none;">
+                                <div class="form-group">
+                                    <label class="form-label" for="fanOutModel1">Fan-out model 1</label>
+                                    <select id="fanOutModel1" name="fan_out_models" class="form-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="fanOutModel2">Fan-out model 2</label>
+                                    <select id="fanOutModel2" name="fan_out_models" class="form-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="fanOutModel3">Fan-out model 3</label>
+                                    <select id="fanOutModel3" name="fan_out_models" class="form-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="fanInModel">Fan-in model</label>
+                                    <select id="fanInModel" name="fan_in_model" class="form-select"></select>
+                                </div>
+                            </div>
+
                             <button type="submit" id="convertBtn" class="btn btn-primary btn-full">
                                 🚀 Start conversion
                             </button>
@@ -1249,6 +1275,11 @@
             document.getElementById('convertForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 convertFiles();
+            });
+
+            const fanToggle = document.getElementById('fanOutToggle');
+            fanToggle.addEventListener('change', function() {
+                document.getElementById('fanSettings').style.display = this.checked ? 'block' : 'none';
             });
 
             // Initialize notifications
@@ -1409,6 +1440,10 @@
                 const models = await response.json();
                 const select = document.getElementById('model');
                 const defaultSelect = document.getElementById('defaultModel');
+                const fanOut1 = document.getElementById('fanOutModel1');
+                const fanOut2 = document.getElementById('fanOutModel2');
+                const fanOut3 = document.getElementById('fanOutModel3');
+                const fanIn = document.getElementById('fanInModel');
 
                 select.innerHTML = '';
                 defaultSelect.innerHTML = '<option value="">Use first available model</option>';
@@ -1423,6 +1458,15 @@
                     defaultOption.value = model;
                     defaultOption.textContent = model;
                     defaultSelect.appendChild(defaultOption);
+
+                    [fanOut1, fanOut2, fanOut3, fanIn].forEach(sel => {
+                        if (sel) {
+                            const opt = document.createElement('option');
+                            opt.value = model;
+                            opt.textContent = model;
+                            sel.appendChild(opt);
+                        }
+                    });
                 });
 
                 if (models.length > 0) {
@@ -1694,6 +1738,22 @@
 
             const notifications = localStorage.getItem('notifications') !== 'false';
             document.getElementById('notifications').checked = notifications;
+
+            const fanOutEnabled = localStorage.getItem('fanOutEnabled') === 'true';
+            document.getElementById('fanOutToggle').checked = fanOutEnabled;
+            document.getElementById('fanSettings').style.display = fanOutEnabled ? 'block' : 'none';
+
+            const fanOutModels = JSON.parse(localStorage.getItem('fanOutModels') || '[]');
+            fanOutModels.forEach((m, i) => {
+                const sel = document.getElementById(`fanOutModel${i + 1}`);
+                if (sel) sel.value = m;
+            });
+
+            const fanInModel = localStorage.getItem('fanInModel');
+            if (fanInModel) {
+                const sel = document.getElementById('fanInModel');
+                if (sel) sel.value = fanInModel;
+            }
         }
 
         function saveSettings() {
@@ -1704,6 +1764,19 @@
             localStorage.setItem('defaultConcurrency', concurrency);
             localStorage.setItem('autoDownload', autoDownload);
             localStorage.setItem('notifications', notifications);
+
+            const fanOutEnabled = document.getElementById('fanOutToggle').checked;
+            localStorage.setItem('fanOutEnabled', fanOutEnabled);
+
+            const fanOutValues = [
+                document.getElementById('fanOutModel1').value,
+                document.getElementById('fanOutModel2').value,
+                document.getElementById('fanOutModel3').value,
+            ];
+            localStorage.setItem('fanOutModels', JSON.stringify(fanOutValues));
+
+            const fanInValue = document.getElementById('fanInModel').value;
+            localStorage.setItem('fanInModel', fanInValue);
 
             // Update convert form
             document.getElementById('concurrency').value = concurrency;

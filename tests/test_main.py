@@ -17,6 +17,7 @@ def mock_openai_service():
     service = Mock(spec=OpenAIService)
     service.get_vision_models = AsyncMock(return_value=["gpt-4o", "gpt-4o-mini"])
     service.process_images_batch = AsyncMock(return_value=["# Test Content"])
+    service.process_images_fan_out_fan_in = AsyncMock(return_value=["# Test Content"])
     return service
 
 
@@ -61,7 +62,9 @@ class TestMainEndpoints:
         model_cache.clear_cache()
 
         # Configure service to raise exception
-        mock_openai_service.get_vision_models = AsyncMock(side_effect=Exception("API Error"))
+        mock_openai_service.get_vision_models = AsyncMock(
+            side_effect=Exception("API Error")
+        )
 
         # Override the dependency
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
@@ -78,7 +81,9 @@ class TestMainEndpoints:
         response = client.post("/convert")
         assert response.status_code == 422  # Unprocessable Entity
 
-    def test_convert_pdfs_success(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
+    def test_convert_pdfs_success(
+        self, client, mock_openai_service, mock_pdf_service, sample_pdf_file
+    ):
         # Configure services
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
 
@@ -88,7 +93,9 @@ class TestMainEndpoints:
 
         try:
             # Prepare file upload
-            files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
+            files = {
+                "files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")
+            }
             data = {"model": "gpt-4o", "detail": "high"}
 
             response = client.post("/convert", files=files, data=data)
@@ -101,7 +108,9 @@ class TestMainEndpoints:
             # Clean up
             app.dependency_overrides.clear()
 
-    def test_convert_pdfs_processing_error(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
+    def test_convert_pdfs_processing_error(
+        self, client, mock_openai_service, mock_pdf_service, sample_pdf_file
+    ):
         # Configure services with error
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
         mock_pdf_service.pdf_to_images.side_effect = Exception("PDF processing error")
@@ -112,7 +121,9 @@ class TestMainEndpoints:
 
         try:
             # Prepare file upload
-            files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
+            files = {
+                "files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")
+            }
             data = {"model": "gpt-4o", "detail": "high"}
 
             response = client.post("/convert", files=files, data=data)
@@ -125,7 +136,9 @@ class TestMainEndpoints:
             # Clean up
             app.dependency_overrides.clear()
 
-    def test_convert_pdfs_no_model_specified(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
+    def test_convert_pdfs_no_model_specified(
+        self, client, mock_openai_service, mock_pdf_service, sample_pdf_file
+    ):
         # Configure services
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
 
@@ -135,7 +148,9 @@ class TestMainEndpoints:
 
         try:
             # Prepare file upload without model specified
-            files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
+            files = {
+                "files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")
+            }
             data = {"detail": "high"}
 
             response = client.post("/convert", files=files, data=data)
@@ -159,12 +174,19 @@ class TestMainEndpoints:
         # Should return empty result since no PDF files were processed
         assert result == {}
 
-    def test_convert_multiple_pages(self, client, mock_openai_service, mock_pdf_service, sample_pdf_file):
+    def test_convert_multiple_pages(
+        self, client, mock_openai_service, mock_pdf_service, sample_pdf_file
+    ):
         # Configure services for multiple pages
         mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
-        mock_openai_service.process_images_batch = AsyncMock(return_value=["# Page 1", "# Page 2"])
+        mock_openai_service.process_images_batch = AsyncMock(
+            return_value=["# Page 1", "# Page 2"]
+        )
         mock_pdf_service.pdf_to_images.return_value = [b"page1_data", b"page2_data"]
-        mock_pdf_service.images_to_base64.return_value = ["page1_base64", "page2_base64"]
+        mock_pdf_service.images_to_base64.return_value = [
+            "page1_base64",
+            "page2_base64",
+        ]
 
         # Override dependencies
         app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
@@ -172,7 +194,9 @@ class TestMainEndpoints:
 
         try:
             # Prepare file upload
-            files = {"files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")}
+            files = {
+                "files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")
+            }
             data = {"model": "gpt-4o", "detail": "high"}
 
             response = client.post("/convert", files=files, data=data)
@@ -184,4 +208,32 @@ class TestMainEndpoints:
             assert result["test.pdf"] == "# Page 1\n\n# Page 2"
         finally:
             # Clean up
+            app.dependency_overrides.clear()
+
+    def test_convert_with_fan_out_fan_in(
+        self, client, mock_openai_service, mock_pdf_service, sample_pdf_file
+    ):
+        mock_openai_service.get_vision_models = AsyncMock(return_value=["gpt-4o"])
+
+        app.dependency_overrides[get_openai_service] = lambda: mock_openai_service
+        app.dependency_overrides[get_pdf_service] = lambda: mock_pdf_service
+        try:
+            files = {
+                "files": ("test.pdf", sample_pdf_file.getvalue(), "application/pdf")
+            }
+            data = [
+                ("model", "gpt-4o"),
+                ("detail", "high"),
+                ("fan_out_enabled", "on"),
+                ("fan_out_models", "m1"),
+                ("fan_out_models", "m2"),
+                ("fan_out_models", "m3"),
+                ("fan_in_model", "m4"),
+            ]
+
+            response = client.post("/convert", files=files, data=data)
+
+            assert response.status_code == 200
+            mock_openai_service.process_images_fan_out_fan_in.assert_awaited()
+        finally:
             app.dependency_overrides.clear()

@@ -141,3 +141,38 @@ class TestPDFService:
             service.pdf_to_images(pdf_bytes)
 
         assert "Failed to convert PDF to images" in str(exc_info.value)
+
+
+class TestFanOutFanIn:
+    @pytest.mark.asyncio
+    async def test_process_images_fan_out_fan_in(self):
+        service = OpenAIService()
+
+        service._process_single_image = AsyncMock(side_effect=[
+            (0, "md_a"),
+            (0, "md_b"),
+            (0, "md_c"),
+        ])
+        service._combine_markdown_versions = AsyncMock(return_value=(0, "final"))
+
+        result = await service.process_images_fan_out_fan_in(
+            ["img"], ["m1", "m2", "m3"], "m4"
+        )
+
+        assert result == ["final"]
+        service._process_single_image.assert_has_awaits(
+            [
+                ((0, "img", "m1", "high"),),
+                ((0, "img", "m2", "high"),),
+                ((0, "img", "m3", "high"),),
+            ]
+        )
+        service._combine_markdown_versions.assert_awaited_once_with(
+            0, ["md_a", "md_b", "md_c"], "m4"
+        )
+
+    @pytest.mark.asyncio
+    async def test_process_images_fan_out_fan_in_empty(self):
+        service = OpenAIService()
+        result = await service.process_images_fan_out_fan_in([], ["m1"], "m2")
+        assert result == []
