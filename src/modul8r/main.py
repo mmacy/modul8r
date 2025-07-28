@@ -152,9 +152,9 @@ async def convert_pdfs(
     model: Optional[str] = Form(None),
     detail: Optional[str] = Form("high"),
     concurrency: Optional[int] = Form(settings.max_concurrent_requests),
-    fan_out_models: Annotated[Optional[List[str]], Form(None)] = None,
-    fan_in_model: Annotated[Optional[str], Form(None)] = None,
-    fan_out_enabled: Annotated[Optional[str], Form(None)] = None,
+    fan_out_models: Annotated[Optional[List[str]], Form()] = None,
+    fan_in_model: Annotated[Optional[str], Form()] = None,
+    fan_out_enabled: Annotated[Optional[str], Form()] = None,
     openai_service: OpenAIService = Depends(get_openai_service),
     pdf_service: PDFService = Depends(get_pdf_service),
 ):
