@@ -1,8 +1,18 @@
-from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    Request,
+    UploadFile,
+    File,
+    Form,
+    HTTPException,
+    Depends,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Annotated
 import asyncio
 import uuid
 import json
@@ -12,7 +22,11 @@ from .services import OpenAIService, PDFService
 from .config import settings
 from .logging_config import get_logger, set_request_context, generate_request_id
 from .websocket_handlers import log_stream_manager
-from .performance_monitor import start_performance_monitoring, stop_performance_monitoring, get_global_performance_stats
+from .performance_monitor import (
+    start_performance_monitoring,
+    stop_performance_monitoring,
+    get_global_performance_stats,
+)
 from .model_cache import model_cache
 
 # Configure logging on startup
@@ -66,7 +80,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="modul8r", description="Convert TTRPG adventure module PDFs to Markdown", version="0.1.0", lifespan=lifespan
+    title="modul8r",
+    description="Convert TTRPG adventure module PDFs to Markdown",
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -84,10 +101,17 @@ def get_pdf_service() -> PDFService:
 @app.middleware("http")
 async def add_correlation_id_middleware(request: Request, call_next):
     """Add correlation ID to all requests."""
-    request_id = request.headers.get(settings.log_correlation_id_header) or generate_request_id()
+    request_id = (
+        request.headers.get(settings.log_correlation_id_header) or generate_request_id()
+    )
     set_request_context(request_id=request_id)
 
-    logger.info("Request started", method=request.method, url=str(request.url), request_id=request_id)
+    logger.info(
+        "Request started",
+        method=request.method,
+        url=str(request.url),
+        request_id=request_id,
+    )
 
     response = await call_next(request)
 
@@ -128,6 +152,9 @@ async def convert_pdfs(
     model: Optional[str] = Form(None),
     detail: Optional[str] = Form("high"),
     concurrency: Optional[int] = Form(settings.max_concurrent_requests),
+    fan_out_models: Annotated[Optional[List[str]], Form(None)] = None,
+    fan_in_model: Annotated[Optional[str], Form(None)] = None,
+    fan_out_enabled: Annotated[Optional[str], Form(None)] = None,
     openai_service: OpenAIService = Depends(get_openai_service),
     pdf_service: PDFService = Depends(get_pdf_service),
 ):
@@ -145,10 +172,19 @@ async def convert_pdfs(
     # Use default model if none specified
     if not model:
         available_models = await model_cache.get_models(openai_service)
-        model = available_models[0] if available_models else settings.openai_default_model
+        model = (
+            available_models[0] if available_models else settings.openai_default_model
+        )
         logger.info("Using default model", model=model)
 
-    logger.info("Starting PDF conversion", file_count=len(files), model=model, detail=detail, concurrency=concurrency)
+    logger.info(
+        "Starting PDF conversion",
+        file_count=len(files),
+        model=model,
+        detail=detail,
+        concurrency=concurrency,
+        fan_out_enabled=bool(fan_out_enabled),
+    )
 
     results = {}
 
@@ -156,7 +192,11 @@ async def convert_pdfs(
         async with asyncio.timeout(settings.pdf_processing_timeout):
             for file in files:
                 if file.content_type != "application/pdf":
-                    logger.warning("Skipping non-PDF file", filename=file.filename, content_type=file.content_type)
+                    logger.warning(
+                        "Skipping non-PDF file",
+                        filename=file.filename,
+                        content_type=file.content_type,
+                    )
                     continue
 
                 filename = file.filename or "unknown.pdf"
@@ -170,17 +210,51 @@ async def convert_pdfs(
                     # Convert PDF pages to images
                     logger.info("Converting PDF to images", pdf_size=len(pdf_bytes))
                     image_bytes_list = pdf_service.pdf_to_images(pdf_bytes)
-                    logger.info("Converted PDF to images", page_count=len(image_bytes_list))
+                    logger.info(
+                        "Converted PDF to images", page_count=len(image_bytes_list)
+                    )
 
                     # Convert images to base64
-                    logger.info("Converting images to base64", image_count=len(image_bytes_list))
+                    logger.info(
+                        "Converting images to base64", image_count=len(image_bytes_list)
+                    )
                     image_base64_list = pdf_service.images_to_base64(image_bytes_list)
                     logger.info("Converted images to base64")
 
-                    # Process all pages concurrently using TaskGroup
-                    logger.info("Starting batch processing", total_pages=len(image_base64_list), model=model)
-                    markdown_pages = await openai_service.process_images_batch(image_base64_list, model, detail)
-                    logger.info("Completed batch processing", total_pages=len(markdown_pages))
+                    # Process pages using selected workflow
+                    if fan_out_enabled:
+                        logger.info(
+                            "Starting fan-out/fan-in processing",
+                            total_pages=len(image_base64_list),
+                        )
+                        f_models = fan_out_models or [model, model, model]
+                        if isinstance(f_models, str):
+                            f_models = [f_models]
+                        markdown_pages = (
+                            await openai_service.process_images_fan_out_fan_in(
+                                image_base64_list,
+                                f_models,
+                                fan_in_model or model,
+                                detail,
+                            )
+                        )
+                        logger.info(
+                            "Completed fan-out/fan-in processing",
+                            total_pages=len(markdown_pages),
+                        )
+                    else:
+                        logger.info(
+                            "Starting batch processing",
+                            total_pages=len(image_base64_list),
+                            model=model,
+                        )
+                        markdown_pages = await openai_service.process_images_batch(
+                            image_base64_list, model, detail
+                        )
+                        logger.info(
+                            "Completed batch processing",
+                            total_pages=len(markdown_pages),
+                        )
 
                     if markdown_pages:
                         # Combine all pages with double line breaks (no horizontal rules)
@@ -193,18 +267,26 @@ async def convert_pdfs(
                             content_length=len(full_markdown),
                         )
                     else:
-                        results[filename] = "No content could be extracted from this PDF"
-                        logger.warning("No content extracted from file", filename=filename)
+                        results[filename] = (
+                            "No content could be extracted from this PDF"
+                        )
+                        logger.warning(
+                            "No content extracted from file", filename=filename
+                        )
 
                 except Exception as e:
                     error_msg = f"Error processing {filename}: {str(e)}"
                     results[filename] = error_msg
-                    logger.error("Failed to process file", filename=filename, error=str(e))
+                    logger.error(
+                        "Failed to process file", filename=filename, error=str(e)
+                    )
 
         logger.info(
             "Completed PDF conversion",
             total_files=len(files),
-            successful_files=len([r for r in results.values() if not r.startswith("Error")]),
+            successful_files=len(
+                [r for r in results.values() if not r.startswith("Error")]
+            ),
             failed_files=len([r for r in results.values() if r.startswith("Error")]),
         )
 
@@ -213,7 +295,8 @@ async def convert_pdfs(
     except asyncio.TimeoutError:
         logger.error("PDF processing timeout", timeout=settings.pdf_processing_timeout)
         raise HTTPException(
-            status_code=408, detail=f"Processing timeout after {settings.pdf_processing_timeout} seconds"
+            status_code=408,
+            detail=f"Processing timeout after {settings.pdf_processing_timeout} seconds",
         )
     except Exception as e:
         logger.error("Unexpected error during PDF conversion", error=str(e))
@@ -294,7 +377,11 @@ if settings.enable_phase1_status_endpoint:
         # Get memory statistics from enhanced log capture
         from .logging_config import log_capture
 
-        memory_stats = log_capture.get_memory_stats() if hasattr(log_capture, "get_memory_stats") else {}
+        memory_stats = (
+            log_capture.get_memory_stats()
+            if hasattr(log_capture, "get_memory_stats")
+            else {}
+        )
 
         return {
             "phase1_status": "active",
@@ -306,29 +393,54 @@ if settings.enable_phase1_status_endpoint:
             },
             "safeguards": {
                 "message_throttling": {
-                    "status": "active" if settings.enable_message_throttling else "disabled",
-                    "circuit_breaker_active": integrated_stats["websocket"].get("circuit_breaker_active", False),
-                    "current_rate": integrated_stats["websocket"].get("current_rate", 0),
-                    "pending_messages": integrated_stats["websocket"].get("pending_messages", 0),
+                    "status": (
+                        "active" if settings.enable_message_throttling else "disabled"
+                    ),
+                    "circuit_breaker_active": integrated_stats["websocket"].get(
+                        "circuit_breaker_active", False
+                    ),
+                    "current_rate": integrated_stats["websocket"].get(
+                        "current_rate", 0
+                    ),
+                    "pending_messages": integrated_stats["websocket"].get(
+                        "pending_messages", 0
+                    ),
                 },
                 "memory_management": {
-                    "status": "active" if settings.enable_enhanced_memory_management else "disabled",
+                    "status": (
+                        "active"
+                        if settings.enable_enhanced_memory_management
+                        else "disabled"
+                    ),
                     **memory_stats,
                 },
                 "performance_monitoring": {
-                    "status": "active"
-                    if integrated_stats["event_loop"].get("monitoring_active", False)
-                    else "inactive",
+                    "status": (
+                        "active"
+                        if integrated_stats["event_loop"].get(
+                            "monitoring_active", False
+                        )
+                        else "inactive"
+                    ),
                     **integrated_stats["event_loop"],
                 },
             },
             "overall_health": integrated_stats["integrated_health"],
-            "active_connections": integrated_stats["websocket"].get("active_connections", 0),
+            "active_connections": integrated_stats["websocket"].get(
+                "active_connections", 0
+            ),
         }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    logger.info("Starting modul8r server", host=settings.server_host, port=settings.server_port)
-    uvicorn.run(app, host=settings.server_host, port=settings.server_port, reload=settings.server_reload)
+    logger.info(
+        "Starting modul8r server", host=settings.server_host, port=settings.server_port
+    )
+    uvicorn.run(
+        app,
+        host=settings.server_host,
+        port=settings.server_port,
+        reload=settings.server_reload,
+    )
