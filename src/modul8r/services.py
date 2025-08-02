@@ -1,3 +1,4 @@
+# services.py
 import asyncio
 import base64
 import io
@@ -19,41 +20,52 @@ class OpenAIService:
         self.logger = get_logger("openai_service")
 
     async def get_vision_models(self) -> List[str]:
-        """Get list of all available  vision models from OpenAI."""
+        """Get list of all available vision models from OpenAI via Responses API-compatible models."""
         self.logger.info("Fetching model list from OpenAI")
         try:
             models = await self.client.models.list()
-            model_ids = []
+            model_ids: List[str] = []
 
             for model in models.data:
-                if model.id.startswith("gpt-4") or model.id.startswith("o"):  # Vision models start with gpt-4 or o
-                    # Filter for vision models only
+                if model.id.startswith("gpt-4") or model.id.startswith("o"):  # Vision-capable prefixes
                     self.logger.debug("Found vision model", model_id=model.id)
                     model_ids.append(model.id)
 
-            # Sort alphabetically
             model_ids.sort()
-
             self.logger.info("Fetched models", model_count=len(model_ids))
             return model_ids
         except Exception as e:
             self.logger.warning("Failed to fetch models from API", error=str(e))
             raise Exception(f"Failed to fetch models: {str(e)}")
 
+    def _parse_response_text(self, response) -> str:
+        """Normalize getting text output from Responses API response."""
+        if getattr(response, "output_text", None):
+            return response.output_text
+        outputs = getattr(response, "output", []) or []
+        parts: List[str] = []
+        for item in outputs:
+            if hasattr(item, "content") and isinstance(item.content, str):
+                parts.append(item.content)
+            elif isinstance(item, dict):
+                text = item.get("content") or item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        return "\n".join(parts)
+
     @retry(
         stop=stop_after_attempt(settings.retry_max_attempts),
         wait=wait_exponential(multiplier=settings.retry_base_delay, max=settings.retry_max_delay),
         retry=retry_if_exception_type((Exception,)),
-        reraise=True,  # Ensure final exception is raised after all retries
+        reraise=True,
     )
     async def _process_single_image(
         self, page_index: int, image_base64: str, model: str, detail: str
     ) -> Tuple[int, str]:
-        """Process a single image with retry logic and rate limiting."""
+        """Process a single image with retry logic and rate limiting using the Responses API."""
         system_prompt = (
             "You are an expert at converting text content from scanned tabletop RPG adventure "
-            "modules and other game books to clean Markdown format. Your task is to:"
-            "\n\n"
+            "modules and other game books to clean Markdown format. Your task is to:\n\n"
             "1. Accurately transcribe all text content from the image\n"
             "2. Preserve the document structure using appropriate Markdown formatting\n"
             "3. Use proper heading levels (# ## ###) for sections and subsections\n"
@@ -61,10 +73,8 @@ class OpenAIService:
             "5. Maintain any special formatting for game rules, spells, or abilities\n"
             "6. Include any important visual elements as descriptions in [brackets]\n"
             "7. Preserve page layout and organization as much as possible\n"
-            "8. Rely on headings as separators rather than triple-dashes or other characters\n"
-            "\n"
-            "Return ONLY the converted Markdown content with no additional commentary or explanation and without outer "
-            "code fences."
+            "8. Rely on headings as separators rather than triple-dashes or other characters\n\n"
+            "Return ONLY the converted Markdown content with no additional commentary or explanation and without outer code fences."
         )
 
         self.logger.info("Processing page", page=page_index + 1, model=model, detail=detail)
@@ -72,36 +82,38 @@ class OpenAIService:
         async with self.semaphore:
             try:
                 async with asyncio.timeout(settings.openai_timeout):
-                    # Prepare the request parameters
-                    request_params = {
+                    # Build the input for the Responses API: merge system instructions as input_text
+                    user_content = [
+                        {"type": "input_text", "text": system_prompt},
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/png;base64,{image_base64}",
+                            "detail": detail,
+                        },
+                    ]
+
+                    request_kwargs = {
                         "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {"url": f"data:image/png;base64,{image_base64}", "detail": detail},
-                                    }
-                                ],
-                            },
-                        ],
+                        "input": [{"role": "user", "content": user_content}],
                     }
 
-                    # Handle o-series model parameters differently
                     if model.startswith("o"):
-                        request_params["max_completion_tokens"] = 100000  # settings.openai_max_tokens
-                        # o-series models only support temperature=1 (default), so don't set it
+                        # o-series models historically use max_completion_tokens semantics
+                        request_kwargs["max_completion_tokens"] = getattr(settings, "openai_max_tokens", 100000)
+                        # Do not set temperature if not supported / default behavior
                         self.logger.info("Using o-series model parameters", model=model, page=page_index + 1)
                     else:
-                        request_params["max_tokens"] = 32768  # settings.openai_max_tokens
-                        request_params["temperature"] = settings.openai_temperature
+                        request_kwargs["max_output_tokens"] = getattr(settings, "openai_max_tokens", 32768)
+                        request_kwargs["temperature"] = settings.openai_temperature
 
-                    response = await self.client.chat.completions.create(**request_params)
+                    response = await self.client.responses.create(**request_kwargs)
 
-                content = response.choices[0].message.content or ""
-                self.logger.info("Successfully processed page", page=page_index + 1, content_length=len(content))
+                content = self._parse_response_text(response) or ""
+                self.logger.info(
+                    "Successfully processed page",
+                    page=page_index + 1,
+                    content_length=len(content),
+                )
                 return page_index, content
 
             except Exception as e:
@@ -124,24 +136,19 @@ class OpenAIService:
                     for i, image_base64 in enumerate(images_base64)
                 ]
 
-            # Collect results from completed tasks
-            results = [None] * total_pages
+            results = [''] * total_pages
             for task in tasks:
                 page_index, content = task.result()
                 results[page_index] = content
 
-            # Filter out None results and empty content
             final_results = [content for content in results if content and content.strip()]
-
             return final_results
 
         except Exception as e:
-            # Handle any exception from TaskGroup
             self.logger.error("Error during batch processing", error=str(e))
 
-            # For TaskGroup failures, try to salvage partial results
             if "tasks" in locals():
-                successful_results = []
+                successful_results: List[Tuple[int, str]] = []
                 failed_count = 0
 
                 for i, task in enumerate(tasks):
@@ -160,7 +167,6 @@ class OpenAIService:
                         self.logger.debug("Error checking task result", page=i + 1, error=str(task_e))
 
                 if successful_results:
-                    # Sort and return partial results
                     successful_results.sort(key=lambda x: x[0])
                     partial_results = [content for _, content in successful_results if content and content.strip()]
 
@@ -172,14 +178,11 @@ class OpenAIService:
                     )
                     return partial_results
 
-            # If no partial results available, return empty list instead of failing
             self.logger.error("No pages could be processed successfully")
             return []
 
-    async def _combine_markdown_versions(
-        self, page_index: int, versions: List[str], model: str
-    ) -> Tuple[int, str]:
-        """Combine multiple Markdown versions using a language model."""
+    async def _combine_markdown_versions(self, page_index: int, versions: List[str], model: str) -> Tuple[int, str]:
+        """Combine multiple Markdown versions using the Responses API."""
         system_prompt = (
             "You are an expert at consolidating multiple attempts to extract text "
             "from a scanned TTRPG module page. Given up to three Markdown "
@@ -187,35 +190,34 @@ class OpenAIService:
             "Return ONLY the merged Markdown without commentary."
         )
 
-        user_prompt = "\n\n".join(
-            f"Version {i + 1}:\n{md}" for i, md in enumerate(versions)
-        )
+        user_prompt = "\n\n".join(f"Version {i + 1}:\n{md}" for i, md in enumerate(versions))
+        combined_input_text = f"{system_prompt}\n\n{user_prompt}"
 
         async with self.semaphore:
             try:
                 async with asyncio.timeout(settings.openai_timeout):
-                    request_params = {
+                    request_kwargs = {
                         "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt},
+                        "input": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "input_text", "text": combined_input_text},
+                                ],
+                            }
                         ],
                     }
 
                     if model.startswith("o"):
-                        request_params["max_completion_tokens"] = 100000
+                        request_kwargs["max_completion_tokens"] = getattr(settings, "openai_max_tokens", 100000)
                     else:
-                        request_params["max_tokens"] = settings.openai_max_tokens
-                        request_params["temperature"] = settings.openai_temperature
+                        request_kwargs["max_output_tokens"] = getattr(settings, "openai_max_tokens", 32768)
+                        request_kwargs["temperature"] = settings.openai_temperature
 
-                    response = await self.client.chat.completions.create(
-                        **request_params
-                    )
+                    response = await self.client.responses.create(**request_kwargs)
 
-                content = response.choices[0].message.content or ""
-                self.logger.info(
-                    "Combined page", page=page_index + 1, content_length=len(content)
-                )
+                content = self._parse_response_text(response) or ""
+                self.logger.info("Combined page", page=page_index + 1, content_length=len(content))
                 return page_index, content
             except Exception as e:
                 self.logger.error("Failed to combine page", page=page_index + 1, error=str(e))
@@ -231,8 +233,7 @@ class OpenAIService:
     ) -> Tuple[int, str]:
         """Process a single page using fan-out/fan-in."""
         fan_out_tasks = [
-            asyncio.create_task(self._process_single_image(page_index, image_base64, m, detail))
-            for m in fan_out_models
+            asyncio.create_task(self._process_single_image(page_index, image_base64, m, detail)) for m in fan_out_models
         ]
 
         results: List[str] = []
@@ -242,9 +243,7 @@ class OpenAIService:
                 if content and content.strip():
                     results.append(content)
             except Exception as e:
-                self.logger.error(
-                    "Fan-out processing failed", page=page_index + 1, error=str(e)
-                )
+                self.logger.error("Fan-out processing failed", page=page_index + 1, error=str(e))
 
         if not results:
             return page_index, ""
@@ -263,17 +262,12 @@ class OpenAIService:
             return []
 
         fan_out_models = fan_out_models or [settings.openai_default_model] * 3
-
         total_pages = len(images_base64)
 
         try:
             async with asyncio.TaskGroup() as tg:
                 tasks = [
-                    tg.create_task(
-                        self._process_page_fan_out_fan_in(
-                            i, img, fan_out_models, fan_in_model, detail
-                        )
-                    )
+                    tg.create_task(self._process_page_fan_out_fan_in(i, img, fan_out_models, fan_in_model, detail))
                     for i, img in enumerate(images_base64)
                 ]
 
@@ -284,9 +278,7 @@ class OpenAIService:
 
             return [r for r in results if r.strip()]
         except Exception as e:
-            self.logger.error(
-                "Error during fan-out/fan-in processing", error=str(e)
-            )
+            self.logger.error("Error during fan-out/fan-in processing", error=str(e))
             return []
 
 
@@ -297,10 +289,9 @@ class PDFService:
     def pdf_to_images(self, pdf_bytes: bytes) -> List[bytes]:
         """Convert PDF bytes to a list of image bytes (PNG format)."""
         try:
-            # Convert PDF to PIL Images
             images = convert_from_bytes(pdf_bytes, dpi=settings.pdf_dpi, fmt=settings.pdf_format)
 
-            image_bytes_list = []
+            image_bytes_list: List[bytes] = []
             for i, image in enumerate(images):
                 self.logger.info(f"Converting page {i + 1}/{len(images)} to image")
                 img_byte_arr = io.BytesIO()
@@ -314,5 +305,4 @@ class PDFService:
 
     def images_to_base64(self, image_bytes_list: List[bytes]) -> List[str]:
         """Convert list of image bytes to base64 strings."""
-        base64_images = [base64.b64encode(img_bytes).decode("utf-8") for img_bytes in image_bytes_list]
-        return base64_images
+        return [base64.b64encode(img_bytes).decode("utf-8") for img_bytes in image_bytes_list]
